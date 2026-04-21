@@ -1,0 +1,13 @@
+/* styles.css – עיצוב בסיסי משותף לדפי הלקוח */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+}
+
+button {
+    cursor: pointer;
+}

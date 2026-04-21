@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+<meta charset="UTF-8">
+<title>OptiLoad – תצוגת 3D</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:'Segoe UI',Tahoma,sans-serif;overflow:hidden}
+#panel{position:fixed;top:14px;left:14px;background:rgba(13,17,23,.94);border:1px solid #30363d;
+       border-radius:12px;padding:18px;min-width:200px;backdrop-filter:blur(10px);z-index:10;
+       box-shadow:0 4px 24px rgba(0,0,0,.5)}
+#panel h2{font-size:16px;margin-bottom:14px;color:#58a6ff;letter-spacing:.5px}
+.stat{display:flex;justify-content:space-between;font-size:12px;margin:6px 0;gap:16px}
+.val{color:#7ee787;font-weight:600}
+#legend{position:fixed;top:14px;right:14px;background:rgba(13,17,23,.94);border:1px solid #30363d;
+        border-radius:12px;padding:16px;max-height:90vh;overflow-y:auto;min-width:160px;
+        backdrop-filter:blur(10px);z-index:10;box-shadow:0 4px 24px rgba(0,0,0,.5)}
+#legend h3{font-size:13px;margin-bottom:10px;color:#58a6ff}
+.li{display:flex;align-items:center;font-size:12px;margin:5px 0;gap:9px}
+.lc{width:15px;height:15px;border-radius:3px;flex-shrink:0;border:1px solid rgba(255,255,255,.15)}
+#tip{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);font-size:11px;color:#8b949e;
+     background:rgba(13,17,23,.85);padding:7px 18px;border-radius:20px;pointer-events:none;z-index:10}
+</style>
+</head>
+<body>
+<div id="panel">
+  <h2>&#x1F69A; OptiLoad 3D</h2>
+  <div class="stat"><span>&#x1F4E6; מכולות</span><span class="val" id="sb"></span></div>
+  <div class="stat"><span>&#x1F4CA; ניצול נפח</span><span class="val" id="sv"></span></div>
+  <div class="stat"><span>&#x2705; שובצו</span><span class="val" id="sp"></span></div>
+  <div class="stat"><span>&#x274C; לא שובצו</span><span class="val" id="su"></span></div>
+  <div class="stat"><span>&#x23F1; זמן חישוב</span><span class="val" id="st"></span></div>
+  <div class="stat"><span>&#x1F3AF; אופטימלי</span><span class="val" id="so"></span></div>
+</div>
+<div id="legend"><h3>&#x1F3A8; סוגי ארגזים</h3><div id="li"></div></div>
+<div id="tip">&#x1F5B1; גרור לסיבוב &nbsp;&middot;&nbsp; גלגלת לזום &nbsp;&middot;&nbsp; Shift+גרור להזזה</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+/*
+ * NOTE: דף זה מיועד לתצוגה של תוצאת שיבוץ שמורה מה-DB.
+ * בסביבת הייצור, השרת מחליף את /**DATA**\/ בנתוני JSON אמיתיים.
+ * ה-endpoint המשמש: GET /api/visualization/3d/{jobId}
+ *                   GET /api/visualization/run  (legacy)
+ *
+ * מבנה ה-JSON (R):
+ * {
+ *   binsUsed: number,
+ *   volumeUtilization: number,
+ *   placedCount: number,
+ *   unplacedCount: number,
+ *   solveTime: string,
+ *   isOptimal: bool,
+ *   placedBoxes: [
+ *     { name, x1, y1, z1, x2, y2, z2, binIndex, isFragile }
+ *   ]
+ * }
+ */
+const R = /**DATA**/;
+const CW=R.containerW||589, CH=R.containerH||239, CD=R.containerD||235, GAP=Math.round(CW*0.25);
+const PAL=[0x4c9be8,0x56d364,0xe3b341,0xd2a8ff,0x79c0ff,0xffa657,
+           0xf78166,0xadd7f6,0xb8bb26,0x83a598,0xfe8019,0x8ec07c,0xa9b665];
+const nameColor={};let ci=0;
+function gc(n,f){ if(f) return 0xff8c00; if(!nameColor[n]) nameColor[n]=PAL[ci++%PAL.length]; return nameColor[n]; }
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0d1117);
+scene.fog=new THREE.FogExp2(0x0d1117,0.00028);
+
+const camera=new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,1,30000);
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true; controls.dampingFactor=0.07;
+controls.minDistance=200; controls.maxDistance=9000;
+
+// תאורה
+scene.add(new THREE.AmbientLight(0xffffff,0.6));
+const dl=new THREE.DirectionalLight(0xffffff,0.75);
+dl.position.set(1200,1800,900); dl.castShadow=true;
+dl.shadow.camera.left=-2500; dl.shadow.camera.right=2500;
+dl.shadow.camera.top=1200; dl.shadow.camera.bottom=-600;
+dl.shadow.camera.near=50; dl.shadow.camera.far=7000;
+dl.shadow.mapSize.set(2048,2048); scene.add(dl);
+scene.add(new THREE.HemisphereLight(0x3a6fcc,0x001a0d,0.35));
+
+// רצפה
+const totalW=R.binsUsed*(CW+GAP)-GAP;
+const grid=new THREE.GridHelper(Math.max(totalW*1.6,2000),60,0x161b22,0x21262d);
+grid.position.set(totalW/2,-0.5,CD/2); scene.add(grid);
+
+// מסגרת מכולה
+function addBin(ox,bi){
+  const col=new THREE.Color(bi===0?0x58a6ff:0x3fb950);
+  const geo=new THREE.BoxGeometry(CW,CH,CD);
+  const ls=new THREE.LineSegments(
+    new THREE.EdgesGeometry(geo),
+    new THREE.LineBasicMaterial({color:col,transparent:true,opacity:.75})
+  );
+  ls.position.set(ox+CW/2,CH/2,CD/2); scene.add(ls);
+  // רצפת המכולה
+  const fp=new THREE.Mesh(
+    new THREE.PlaneGeometry(CW,CD),
+    new THREE.MeshStandardMaterial({color:bi===0?0x0c1f35:0x0c2512,transparent:true,opacity:.35,roughness:1})
+  );
+  fp.rotation.x=-Math.PI/2; fp.position.set(ox+CW/2,0.3,CD/2);
+  fp.receiveShadow=true; scene.add(fp);
+}
+
+// ארגזים
+const legSet={};
+R.placedBoxes.forEach(pb=>{
+  const ox=(pb.binIndex||0)*(CW+GAP);
+  const bw=pb.x2-pb.x1, bh=pb.y2-pb.y1, bd=pb.z2-pb.z1;
+  const col=gc(pb.name,pb.isFragile);
+  const mesh=new THREE.Mesh(
+    new THREE.BoxGeometry(bw-.8,bh-.8,bd-.8),
+    new THREE.MeshLambertMaterial({color:col,transparent:true,opacity:.84})
+  );
+  mesh.position.set(ox+pb.x1+bw/2, pb.y1+bh/2, pb.z1+bd/2);
+  mesh.castShadow=true; mesh.receiveShadow=true; scene.add(mesh);
+  // קווי מסגרת על הארגז
+  const el=new THREE.LineSegments(
+    new THREE.EdgesGeometry(mesh.geometry),
+    new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.38})
+  );
+  el.position.copy(mesh.position); scene.add(el);
+  if(!legSet[pb.name]) legSet[pb.name]={c:col,f:pb.isFragile};
+});
+
+for(let b=0;b<R.binsUsed;b++) addBin(b*(CW+GAP),b);
+
+// מצלמה
+controls.target.set(totalW/2,CH/2,CD/2);
+camera.position.set(totalW/2+200, CH*1.9, CD*3.4);
+controls.update();
+
+// אגדה
+Object.entries(legSet).forEach(([n,{c,f}])=>{
+  const h='#'+c.toString(16).padStart(6,'0');
+  document.getElementById('li').insertAdjacentHTML('beforeend',
+    '<div class="li"><div class="lc" style="background:'+h+'"></div>'+n+(f?' &#x1F538;':'')+'</div>');
+});
+
+// סטטיסטיקות
+document.getElementById('sb').textContent = R.binsUsed;
+document.getElementById('sv').textContent = (R.volumeUtilization*100).toFixed(1)+'%';
+document.getElementById('sp').textContent = R.placedCount;
+document.getElementById('su').textContent = R.unplacedCount;
+document.getElementById('st').textContent = R.solveTime;
+document.getElementById('so').textContent = R.isOptimal ? 'כן ✓' : 'לא (היוריסטי)';
+
+// אנימציה
+function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene,camera); }
+animate();
+window.addEventListener('resize',()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+});
+</script>
+</body>
+</html>

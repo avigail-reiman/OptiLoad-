@@ -1,0 +1,6 @@
+@OptiLoad.API_HostAddress = http://localhost:5098
+
+GET {{OptiLoad.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

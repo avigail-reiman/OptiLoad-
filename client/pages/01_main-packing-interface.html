@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OptiLoad – שיבוץ ארגזים 3D</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:'Segoe UI',Tahoma,Arial,sans-serif;
+     display:flex;height:100vh;overflow:hidden}
+
+/* ── Canvas ── */
+#cv-wrap{flex:1;position:relative;min-width:0;overflow:hidden}
+#cv-wrap canvas{display:block}
+#tip{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+     font-size:11px;color:#8b949e;background:rgba(13,17,23,.85);
+     padding:6px 18px;border-radius:20px;pointer-events:none;white-space:nowrap}
+#loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+         background:rgba(13,17,23,.72);font-size:15px;color:#58a6ff;
+         flex-direction:column;gap:12px;z-index:20}
+#loading.show{display:flex}
+.spinner{width:36px;height:36px;border:3px solid #21262d;
+         border-top-color:#58a6ff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Sidebar ── */
+#sidebar{width:370px;flex-shrink:0;background:#161b22;border-left:1px solid #30363d;
+         height:100vh;overflow-y:auto;
+         padding:14px;direction:rtl}
+#sidebar h1{font-size:17px;color:#58a6ff;letter-spacing:.3px}
+.sub{font-size:11px;color:#6e7681;margin-top:2px}
+.sec-hdr{font-size:10.5px;color:#8b949e;font-weight:700;letter-spacing:.7px;
+         text-transform:uppercase;border-bottom:1px solid #21262d;
+         padding-bottom:4px;margin-bottom:8px}
+
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.lbl{font-size:11px;color:#8b949e;display:flex;flex-direction:column;gap:3px}
+.lbl span{opacity:.85}
+
+input[type=number],input[type=text]{
+  background:#0d1117;border:1px solid #30363d;border-radius:6px;
+  color:#e6edf3;padding:5px 7px;font-size:12px;width:100%;
+  outline:none;font-family:inherit;transition:border-color .15s}
+input:focus{border-color:#58a6ff}
+
+/* Box table */
+.tbl-wrap{overflow-x:auto;max-height:260px;overflow-y:auto;margin-bottom:6px}
+table{border-collapse:collapse;font-size:11px;width:100%;min-width:440px}
+th{background:#21262d;color:#8b949e;padding:5px 3px;font-weight:600;
+   position:sticky;top:0;z-index:1;text-align:center;user-select:none}
+td{padding:2px 2px;border-bottom:1px solid #0d1117}
+td input[type=number]{width:40px;padding:3px 4px}
+td input[type=text]{width:66px;padding:3px 4px}
+td input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:#58a6ff}
+.btn-del{background:none;border:none;color:#6e7681;cursor:pointer;
+         font-size:13px;padding:2px 5px;transition:color .15s}
+.btn-del:hover{color:#f85149}
+
+.btn-add{background:#0d1f35;border:1px dashed #1f6feb;border-radius:6px;
+         color:#58a6ff;cursor:pointer;font-size:12px;width:100%;
+         padding:7px;margin-top:2px;transition:background .15s}
+.btn-add:hover{background:#152535}
+
+#run-btn{background:linear-gradient(135deg,#238636,#1a7f37);
+         border:1px solid #2ea043;border-radius:8px;color:#fff;cursor:pointer;
+         font-size:14px;font-weight:700;padding:12px;width:100%;
+         letter-spacing:.4px;transition:all .15s;box-shadow:0 2px 8px rgba(35,134,54,.3)}
+#run-btn:hover:not(:disabled){background:linear-gradient(135deg,#2ea043,#238636);
+  box-shadow:0 4px 16px rgba(35,134,54,.4)}
+#run-btn:disabled{background:#1c2128;border-color:#30363d;color:#484f58;
+  cursor:not-allowed;box-shadow:none}
+
+/* Stats */
+.stat-row{display:flex;justify-content:space-between;align-items:center;
+          font-size:12px;padding:6px 0;border-bottom:1px solid #21262d}
+.stat-val{color:#7ee787;font-weight:700;font-size:13px}
+.stat-val.warn{color:#ffa657}
+
+#legend-list{display:flex;flex-wrap:wrap;gap:6px 10px}
+.li{display:flex;align-items:center;gap:5px;font-size:11px}
+.lc{width:12px;height:12px;border-radius:3px;
+    border:1px solid rgba(255,255,255,.2);flex-shrink:0}
+
+/* Scroll */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:#0d1117}
+::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#484f58}
+</style>
+</head>
+<body>
+
+<!-- ═══ Three.js Canvas ═══ -->
+<div id="cv-wrap">
+  <div id="loading">
+    <div class="spinner"></div>
+    <div>מריץ אלגוריתם שיבוץ...</div>
+  </div>
+  <div id="tip">🖱️ גרור לסיבוב &nbsp;·&nbsp; גלגלת לזום &nbsp;·&nbsp; Shift+גרור להזזה</div>
+</div>
+
+<!-- ═══ Sidebar ═══ -->
+<aside id="sidebar">
+
+  <div>
+    <h1>🚛 OptiLoad 3D</h1>
+    <div class="sub">שיבוץ ארגזים אופטימלי בקונטיינרים</div>
+  </div>
+
+  <!-- Container -->
+  <div>
+    <div class="sec-hdr">📦 מידות מכולה</div>
+    <div class="form-grid">
+      <label class="lbl"><span>רוחב (ס"מ)</span>
+        <input type="number" id="cw" value="589" min="1"></label>
+      <label class="lbl"><span>גובה (ס"מ)</span>
+        <input type="number" id="ch" value="239" min="1"></label>
+      <label class="lbl"><span>עומק (ס"מ)</span>
+        <input type="number" id="cd" value="235" min="1"></label>
+      <label class="lbl"><span>משקל מקס (ק"ג)</span>
+        <input type="number" id="cmw" value="21770" min="1"></label>
+    </div>
+  </div>
+
+  <!-- Box types -->
+  <div style="margin-top:14px">
+    <div class="sec-hdr">📦 סוגי ארגזים</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>שם</th>
+            <th>W</th><th>H</th><th>D</th>
+            <th>ק"ג</th><th>כמות</th>
+            <th title="שביר">שביר</th>
+            <th title="מאפשר סיבוב">סיבוב</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="boxes-tbody"></tbody>
+      </table>
+    </div>
+    <button class="btn-add" id="btn-add-row" type="button">＋ הוסף סוג ארגז</button>
+  </div>
+
+  <!-- Time limit -->
+  <div style="margin-top:6px">
+    <label class="lbl"><span>⏱ מגבלת זמן (שניות)</span>
+      <input type="number" id="time-limit" value="10" min="1" max="300">
+    </label>
+  </div>
+
+  <!-- Run -->
+  <button id="run-btn" type="button" style="margin-top:10px">▶  הרץ שיבוץ</button>
+
+  <!-- Results -->
+  <div id="sec-results" style="display:none">
+    <div class="sec-hdr">📊 תוצאות</div>
+    <div class="stat-row"><span>🚚 מכולות</span>
+      <span class="stat-val" id="r-bins"></span></div>
+    <div class="stat-row"><span>📊 ניצול נפח</span>
+      <span class="stat-val" id="r-vol"></span></div>
+    <div class="stat-row"><span>✅ שובצו</span>
+      <span class="stat-val" id="r-placed"></span></div>
+    <div class="stat-row"><span>❌ לא שובצו</span>
+      <span class="stat-val warn" id="r-unplaced"></span></div>
+    <div class="stat-row"><span>⏱ זמן חישוב</span>
+      <span class="stat-val" id="r-time"></span></div>
+    <div class="stat-row"><span>🎯 אופטימלי</span>
+      <span class="stat-val" id="r-opt"></span></div>
+  </div>
+
+  <!-- Legend -->
+  <div id="sec-legend" style="display:none;padding-bottom:8px">
+    <div class="sec-hdr">🎨 מקרא</div>
+    <div id="legend-list"></div>
+  </div>
+
+</aside>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ─── Default demo boxes ──────────────────────────────────────────
+const DEMO = [
+  {name:'TINY-A',    w:20,  h:20,  d:20,  kg:1,  qty:10, fragile:false, rot:true},
+  {name:'TINY-B',    w:30,  h:20,  d:25,  kg:2,  qty:8,  fragile:false, rot:true},
+  {name:'SMALL-A',   w:40,  h:40,  d:40,  kg:4,  qty:7,  fragile:false, rot:true},
+  {name:'SMALL-B',   w:60,  h:50,  d:55,  kg:7,  qty:6,  fragile:false, rot:true},
+  {name:'SMALL-C',   w:70,  h:40,  d:60,  kg:8,  qty:5,  fragile:false, rot:true},
+  {name:'MED-A',     w:80,  h:80,  d:80,  kg:15, qty:4,  fragile:false, rot:true},
+  {name:'MED-B',     w:100, h:90,  d:100, kg:20, qty:3,  fragile:false, rot:true},
+  {name:'MED-TALL',  w:90,  h:150, d:90,  kg:22, qty:2,  fragile:false, rot:true},
+  {name:'MED-WIDE',  w:140, h:80,  d:100, kg:18, qty:3,  fragile:false, rot:true},
+  {name:'LARGE-A',   w:150, h:100, d:120, kg:35, qty:2,  fragile:false, rot:true},
+  {name:'LARGE-B',   w:200, h:120, d:150, kg:50, qty:2,  fragile:false, rot:true},
+  {name:'LARGE-FLAT',w:230, h:60,  d:180, kg:40, qty:1,  fragile:false, rot:true},
+  {name:'FRAGILE-S', w:50,  h:40,  d:50,  kg:3,  qty:3,  fragile:true,  rot:false},
+  {name:'FRAGILE-M', w:90,  h:70,  d:90,  kg:10, qty:2,  fragile:true,  rot:false},
+];
+
+// ─── Three.js setup ───────────────────────────────────────────────
+const wrap     = document.getElementById('cv-wrap');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+wrap.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1117);
+scene.fog        = new THREE.FogExp2(0x0d1117, 0.00028);
+
+const camera  = new THREE.PerspectiveCamera(45, 1, 1, 30000);
+const control = new THREE.OrbitControls(camera, renderer.domElement);
+control.enableDamping = true;
+control.dampingFactor = 0.07;
+control.minDistance   = 100;
+control.maxDistance   = 9000;
+
+// Lights
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dl = new THREE.DirectionalLight(0xffffff, 0.75);
+dl.position.set(1200, 1800, 900);
+dl.castShadow = true;
+dl.shadow.camera.left   = -3000; dl.shadow.camera.right = 3000;
+dl.shadow.camera.top    =  1500; dl.shadow.camera.bottom = -800;
+dl.shadow.camera.near   = 50;    dl.shadow.camera.far   = 7000;
+dl.shadow.mapSize.set(2048, 2048);
+scene.add(dl);
+scene.add(new THREE.HemisphereLight(0x3a6fcc, 0x001a0d, 0.35));
+
+function resize() {
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+resize();
+new ResizeObserver(resize).observe(wrap);
+
+(function animate() {
+  requestAnimationFrame(animate);
+  control.update();
+  renderer.render(scene, camera);
+})();
+
+// ─── Box table rows ───────────────────────────────────────────────
+let rid = 0;
+function addBoxRow(b) {
+  b = b || {name:'', w:50, h:50, d:50, kg:5, qty:1, fragile:false, rot:true};
+  const id = 'r' + (rid++);
+  const tr = document.createElement('tr');
+  tr.id = id;
+  tr.innerHTML =
+    `<td><input type="text"   value="${b.name}" style="width:66px"></td>` +
+    `<td><input type="number" value="${b.w}"   min="1" style="width:40px"></td>` +
+    `<td><input type="number" value="${b.h}"   min="1" style="width:40px"></td>` +
+    `<td><input type="number" value="${b.d}"   min="1" style="width:40px"></td>` +
+    `<td><input type="number" value="${b.kg}"  min="0" step="0.1" style="width:40px"></td>` +
+    `<td><input type="number" value="${b.qty}" min="1" style="width:38px"></td>` +
+    `<td style="text-align:center"><input type="checkbox" ${b.fragile ? 'checked' : ''}></td>` +
+    `<td style="text-align:center"><input type="checkbox" ${b.rot    ? 'checked' : ''}></td>` +
+    `<td><button class="btn-del" onclick="document.getElementById('${id}').remove()">✕</button></td>`;
+  document.getElementById('boxes-tbody').appendChild(tr);
+}
+
+function getBoxRows() {
+  return Array.from(document.querySelectorAll('#boxes-tbody tr')).map(tr => {
+    const i = tr.querySelectorAll('input');
+    return {
+      name: i[0].value || 'Box',
+      w: +i[1].value, h: +i[2].value, d: +i[3].value,
+      weight: +i[4].value,
+      qty: Math.max(1, +i[5].value),
+      fragile: i[6].checked,
+      allowRotation: i[7].checked
+    };
+  });
+}
+
+// Populate demo data
+DEMO.forEach(b => addBoxRow(b));
+
+// ─── Color palette ────────────────────────────────────────────────
+const PAL = [
+  0x4c9be8, 0x56d364, 0xe3b341, 0xd2a8ff, 0x79c0ff, 0xffa657,
+  0xf78166, 0xadd7f6, 0xb8bb26, 0x83a598, 0xfe8019, 0x8ec07c, 0xa9b665
+];
+let colMap = {}, colIdx = 0;
+
+function getColor(name, fragile) {
+  if (fragile) return 0xff8c00;
+  if (!colMap[name]) colMap[name] = PAL[colIdx++ % PAL.length];
+  return colMap[name];
+}
+
+// ─── Clear scene objects (keep lights & camera) ───────────────────
+function clearScene() {
+  const rm = [];
+  scene.traverse(o => {
+    if (o.isMesh || o.isLineSegments) rm.push(o);
+  });
+  rm.forEach(o => {
+    scene.remove(o);
+    o.geometry && o.geometry.dispose();
+    if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
+    else o.material && o.material.dispose();
+  });
+  colMap = {}; colIdx = 0;
+}
+
+// ─── Render packing result ────────────────────────────────────────
+function renderResult(data) {
+  clearScene();
+
+  const CW = data.containerW, CH = data.containerH, CD = data.containerD;
+  const GAP = Math.max(80, CW * 0.15);
+  const totalW = data.binsUsed * (CW + GAP) - GAP;
+
+  // Floor grid
+  const grid = new THREE.GridHelper(
+    Math.max(totalW * 1.6, 1000), 60, 0x161b22, 0x21262d
+  );
+  grid.position.set(totalW / 2, -0.5, CD / 2);
+  scene.add(grid);
+
+  // Container wireframes + floor tiles
+  for (let b = 0; b < data.binsUsed; b++) {
+    const ox  = b * (CW + GAP);
+    const col = new THREE.Color(b === 0 ? 0x58a6ff : 0x3fb950);
+
+    const ls = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(CW, CH, CD)),
+      new THREE.LineBasicMaterial({color: col, transparent: true, opacity: .75})
+    );
+    ls.position.set(ox + CW / 2, CH / 2, CD / 2);
+    scene.add(ls);
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(CW, CD),
+      new THREE.MeshStandardMaterial({
+        color: b === 0 ? 0x0c1f35 : 0x0c2512,
+        transparent: true, opacity: .35, roughness: 1
+      })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(ox + CW / 2, 0.3, CD / 2);
+    floor.receiveShadow = true;
+    scene.add(floor);
+  }
+
+  // Placed boxes
+  const legSet = {};
+  data.placedBoxes.forEach(pb => {
+    const ox = (pb.binIndex || 0) * (CW + GAP);
+    const bw = pb.x2 - pb.x1, bh = pb.y2 - pb.y1, bd = pb.z2 - pb.z1;
+    const col = getColor(pb.name, pb.isFragile);
+
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(bw - .8, bh - .8, bd - .8),
+      new THREE.MeshLambertMaterial({color: col, transparent: true, opacity: .84})
+    );
+    mesh.position.set(ox + pb.x1 + bw / 2, pb.y1 + bh / 2, pb.z1 + bd / 2);
+    mesh.castShadow = mesh.receiveShadow = true;
+    scene.add(mesh);
+
+    const edges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(mesh.geometry),
+      new THREE.LineBasicMaterial({color: 0x000000, transparent: true, opacity: .35})
+    );
+    edges.position.copy(mesh.position);
+    scene.add(edges);
+
+    if (!legSet[pb.name]) legSet[pb.name] = {c: col, f: pb.isFragile};
+  });
+
+  // Reposition camera
+  control.target.set(totalW / 2, CH / 2, CD / 2);
+  camera.position.set(totalW / 2 + CW * .4, CH * 1.9, CD * 3.4);
+  control.update();
+
+  // Stats
+  document.getElementById('r-bins').textContent    = data.binsUsed;
+  document.getElementById('r-vol').textContent     = (data.volumeUtilization * 100).toFixed(1) + '%';
+  document.getElementById('r-placed').textContent  = data.placedCount;
+  document.getElementById('r-unplaced').textContent= data.unplacedCount;
+  document.getElementById('r-time').textContent    = data.solveTime;
+  document.getElementById('r-opt').textContent     = data.isOptimal ? 'כן ✓' : 'לא (היוריסטי)';
+  document.getElementById('sec-results').style.display = 'block';
+
+  // Legend
+  const ll = document.getElementById('legend-list');
+  ll.innerHTML = '';
+  Object.entries(legSet).forEach(([n, {c, f}]) => {
+    ll.insertAdjacentHTML('beforeend',
+      `<div class="li">` +
+      `<div class="lc" style="background:#${c.toString(16).padStart(6,'0')}"></div>` +
+      `${n}${f ? ' 🔶' : ''}` +
+      `</div>`
+    );
+  });
+  document.getElementById('sec-legend').style.display = 'block';
+}
+
+// ─── Call API ─────────────────────────────────────────────────────
+async function runPacking() {
+  const btn = document.getElementById('run-btn');
+  const ldr = document.getElementById('loading');
+  btn.disabled = true;
+  ldr.classList.add('show');
+
+  const payload = {
+    container: {
+      width:       +document.getElementById('cw').value,
+      height:      +document.getElementById('ch').value,
+      depth:       +document.getElementById('cd').value,
+      maxWeightKg: +document.getElementById('cmw').value
+    },
+    timeLimitSeconds: +(document.getElementById('time-limit').value) || 10,
+    boxes: getBoxRows()
+  };
+
+  try {
+    const res = await fetch('http://localhost:5098/api/visualization/run', {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('שגיאת שרת ' + res.status);
+    renderResult(await res.json());
+  } catch (e) {
+    alert('שגיאה: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    ldr.classList.remove('show');
+  }
+}
+
+// Auto-run demo on page load
+window.addEventListener('load', () => {
+  document.getElementById('btn-add-row').addEventListener('click', () => addBoxRow());
+  document.getElementById('run-btn').addEventListener('click', runPacking);
+  setTimeout(runPacking, 150);
+});
+</script>
+</body>
+</html>

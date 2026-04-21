@@ -1,0 +1,28 @@
+# .NET build outputs
+**/bin/
+**/obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.DotSettings.user
+
+# Secrets & local config
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/appsettings.Secrets.json
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# NuGet
+*.nupkg
+.nuget/
