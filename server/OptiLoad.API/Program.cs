@@ -1,10 +1,12 @@
+﻿using Microsoft.AspNetCore.Diagnostics;
 using OptiLoad.Core.Services;
 using OptiLoad.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── שירותים ──
 builder.Services.AddControllers();
+builder.Services.AddResponseCompression(opts => opts.EnableForHttps = true);
+builder.Services.AddMemoryCache();
 
 // Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
@@ -13,7 +15,7 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "OptiLoad API", Version = "v1" });
 });
 
-// CORS – allow file:// and localhost frontends in development
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DevFrontend", policy =>
@@ -31,9 +33,22 @@ builder.Services.AddScoped<PackingService>(sp =>
 
 var app = builder.Build();
 
-// ── Pipeline ──
-app.UseDefaultFiles();   // /  →  /index.html
-app.UseStaticFiles();    // מגיש קבצים מ-wwwroot
+app.UseResponseCompression();
+
+// Global exception handler
+app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
+{
+    ctx.Response.StatusCode  = 500;
+    ctx.Response.ContentType = "application/json";
+    var feature = ctx.Features.Get<IExceptionHandlerFeature>();
+    var msg     = app.Environment.IsDevelopment() && feature != null
+        ? feature.Error.Message
+        : "Internal server error.";
+    await ctx.Response.WriteAsync($"{{\"error\":\"{msg}\"}}");
+}));
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseCors("DevFrontend");
 
 if (app.Environment.IsDevelopment())
@@ -42,7 +57,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "OptiLoad API v1");
-        c.RoutePrefix = "swagger"; // Swagger זמין ב-/swagger
+        c.RoutePrefix = "swagger";
     });
 }
 

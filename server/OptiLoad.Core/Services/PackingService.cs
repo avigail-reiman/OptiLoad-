@@ -71,7 +71,7 @@ namespace OptiLoad.Core.Services
         }
 
         /// <summary>
-        /// ריצה עם מגבלת זמן — B&B עם timeout.
+        /// ריצה עם מגבלת זמן — B&B רץ על thread נפרד ומשחרר את thread ה-HTTP.
         /// </summary>
         public async Task<PackingResult> RunPackingJobWithTimeLimit(int jobId, double timeLimitSeconds)
         {
@@ -85,7 +85,9 @@ namespace OptiLoad.Core.Services
             {
                 TimeLimitSeconds = timeLimitSeconds
             };
-            var result = solver.Solve(instances);
+
+            // B&B רץ על thread של ThreadPool — לא חוסם thread של ASP.NET
+            var result = await Task.Run(() => solver.Solve(instances));
 
             try
             {

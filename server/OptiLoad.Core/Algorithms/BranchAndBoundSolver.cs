@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -302,9 +302,18 @@ namespace OptiLoad.Core.Algorithms
             // ── ענף 1: שים במכולה פתוחה קיימת ──
             // Symmetry breaking: אם המכולה ריקה (UsedVolume=0), ניסינו כבר מכולה ריקה קודמת —
             // כל המכולות הריקות זהות, אין טעם לנסות יותר מאחת.
+            // ── Symmetry breaking: ararargzim identical ──
+            int minBinIdx = 0;
+            if (currentAssignment.Count > 0)
+            {
+                var prev = currentAssignment[^1];
+                if (SameBoxType(nextBox, prev.instance))
+                    minBinIdx = prev.bin;
+            }
+
             bool triedEmptyBin = false;
             bool placedInExisting = false;  // האם הארגז הצליח להיכנס לאחת המכולות הפתוחות
-            for (int binIdx = 0; binIdx < openBins.Count; binIdx++)
+            for (int binIdx = minBinIdx; binIdx < openBins.Count; binIdx++)
             {
                 bool isEmpty = openBins[binIdx].UsedVolume < 1e-9;
                 if (isEmpty)
@@ -395,6 +404,22 @@ namespace OptiLoad.Core.Algorithms
         // ─────────────────────────────────────────────────────────────────
         // מיזוג תוצאות שני השלבים
         // ─────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// בודק אם שני ארגזים זהים מבחינת הגדרה (לצורך symmetry breaking).
+        /// שני ארגזים נחשבים זהים אם ממדיהם, משקלם, שבירותם וכיווניהם זהים.
+        /// </summary>
+        private static bool SameBoxType(BoxInstance a, BoxInstance b)
+        {
+            var da = a.BoxDefinition;
+            var db = b.BoxDefinition;
+            return Math.Abs(da.Width  - db.Width)  < 1e-9 &&
+                   Math.Abs(da.Height - db.Height) < 1e-9 &&
+                   Math.Abs(da.Depth  - db.Depth)  < 1e-9 &&
+                   Math.Abs(da.WeightKg - db.WeightKg) < 1e-9 &&
+                   da.IsFragile     == db.IsFragile &&
+                   da.AllowRotation == db.AllowRotation;
+        }
 
         /// <summary>
         /// בונה מחדש רשימת PackingState מרשימת מיקומים – משמש לשחזור bins אחרי backtracking.
@@ -539,3 +564,5 @@ namespace OptiLoad.Core.Algorithms
         }
     }
 }
+
+

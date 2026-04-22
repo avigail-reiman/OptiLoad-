@@ -1,52 +1,28 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
+using OptiLoad.API.DTOs;
 using OptiLoad.Core.Models;
 using OptiLoad.Core.Services;
 using OptiLoad.Data;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace OptiLoad.API.Controllers;
-
-// ─── DTOs for POST /api/visualization/run ────────────────────────
-public class VisualizationContainerConfig
-{
-    public double Width       { get; set; }
-    public double Height      { get; set; }
-    public double Depth       { get; set; }
-    public double MaxWeightKg { get; set; }
-}
-
-public class VisualizationBoxConfig
-{
-    public string Name          { get; set; } = "";
-    public double W             { get; set; }
-    public double H             { get; set; }
-    public double D             { get; set; }
-    public double Weight        { get; set; }
-    public bool   Fragile       { get; set; }
-    public bool   AllowRotation { get; set; }
-    public int    Qty           { get; set; } = 1;
-}
-
-public class VisualizationRunRequest
-{
-    public VisualizationContainerConfig Container        { get; set; } = new();
-    public List<VisualizationBoxConfig>  Boxes           { get; set; } = new();
-    public double                        TimeLimitSeconds { get; set; } = 10.0;
-    /// <summary>גובה מילוי מקסימלי (ס"מ). אם null — גובה מלא של המכולה.</summary>
-    public double?                       MaxFillHeight    { get; set; }
-}
 
 [ApiController]
 [Route("api/[controller]")]
 public class VisualizationController : ControllerBase
 {
     private readonly DatabaseService _db;
-    private readonly PackingService  _packing;
+    private readonly PackingService   _packing;
+    private readonly IMemoryCache     _cache;
 
-    public VisualizationController(DatabaseService db, PackingService packing)
+    public VisualizationController(DatabaseService db, PackingService packing, IMemoryCache cache)
     {
         _db      = db;
         _packing = packing;
+        _cache   = cache;
     }
 
     // ─── הצגת ריצה קיימת מה-DB ────────────────────────────────────────
@@ -231,6 +207,12 @@ public class VisualizationController : ControllerBase
     [HttpPost("run")]
     public async Task<ActionResult> RunPacking([FromBody] VisualizationRunRequest request)
     {
+        // Cache key based on request content hash
+        var cacheKey = "packing_" + Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request))));
+        if (_cache.TryGetValue(cacheKey, out object? cached))
+            return Ok(cached);
+
         var container = new ContainerDimensions
         {
             Width       = request.Container.Width,
@@ -285,7 +267,7 @@ public class VisualizationController : ControllerBase
         var result = await _packing.RunPackingJobWithTimeLimit(jobId, timeLimit);
 
         // ── שלב 5: בנה תגובת JSON לתצוגה ──────────────────────────────
-        return Ok(new
+        var response = new
         {
             jobId             = jobId,
             containerW        = container.Width,
@@ -317,7 +299,9 @@ public class VisualizationController : ControllerBase
             unplacedCount     = result.UnplacedBoxes.Count,
             solveTime         = result.SolveTime.TotalMilliseconds.ToString("F0") + "ms",
             isOptimal         = result.IsOptimal
-        });
+        };
+        _cache.Set(cacheKey, response, TimeSpan.FromMinutes(30));
+        return Ok(response);
     }
 
     // ─── Helper: per-bin stats from DB placements ────────────────────────
