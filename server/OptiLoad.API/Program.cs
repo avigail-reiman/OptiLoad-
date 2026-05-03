@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
+﻿using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics;
 using OptiLoad.Core.Services;
 using OptiLoad.Data;
 
@@ -31,9 +34,35 @@ builder.Services.AddSingleton<IPackingRepository>(sp => sp.GetRequiredService<Da
 builder.Services.AddScoped<PackingService>(sp =>
     new PackingService(sp.GetRequiredService<IPackingRepository>()));
 
+// Admin authentication and JWT
+builder.Services.AddScoped<IAdminService, AdminService>();
+var jwtKey = "SuperSecretKeyForJwtSignature123!"; // move to config
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtKey)),
+        ValidateIssuer = false,
+        ValidateAudience = false
+    };
+});
+
+// --- הרצת מבחן אוטומטית על נתוני דוגמה ---
+// await OptiLoad.Core.Services.TestDataRunner.RunFromJson("../OptiLoad.Core/TestData/SampleTestData.json");
+// Environment.Exit(0);
+// --- סוף הרצת מבחן ---
+
 var app = builder.Build();
 
+
 app.UseResponseCompression();
+app.UseAuthentication();
 
 // Global exception handler
 app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
@@ -47,8 +76,29 @@ app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
     await ctx.Response.WriteAsync($"{{\"error\":\"{msg}\"}}");
 }));
 
-app.UseDefaultFiles();
-app.UseStaticFiles();
+// הגשת קבצי client מתיקיית client/ שנמצאת שתי רמות מעל ה-API
+var clientPath = Path.GetFullPath(Path.Combine(
+    builder.Environment.ContentRootPath, "..", "..", "client"));
+
+if (Directory.Exists(clientPath))
+{
+    app.UseDefaultFiles(new DefaultFilesOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(clientPath),
+        RequestPath  = ""
+    });
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(clientPath),
+        RequestPath  = ""
+    });
+}
+else
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+}
+
 app.UseCors("DevFrontend");
 
 if (app.Environment.IsDevelopment())

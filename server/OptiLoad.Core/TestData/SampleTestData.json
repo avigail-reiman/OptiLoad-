@@ -1,0 +1,26 @@
+{
+  "container": {
+    "Width": 20.0,
+    "Height": 10.0,
+    "Depth": 10.0,
+    "MaxWeightKg": 1000.0
+  },
+  "boxes": [
+    { "BoxId": 1, "BoxName": "BigCube",    "Width": 8,  "Height": 8,  "Depth": 8,  "WeightKg": 50,  "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 2, "BoxName": "TallBox",    "Width": 4,  "Height": 10, "Depth": 4,  "WeightKg": 30,  "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 3, "BoxName": "FlatBox",    "Width": 10, "Height": 2,  "Depth": 8,  "WeightKg": 20,  "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 4, "BoxName": "LongBox",    "Width": 16, "Height": 2,  "Depth": 2,  "WeightKg": 15,  "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 5, "BoxName": "Cube1",      "Width": 4,  "Height": 4,  "Depth": 4,  "WeightKg": 10,  "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 6, "BoxName": "Cube2",      "Width": 4,  "Height": 4,  "Depth": 4,  "WeightKg": 10,  "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 7, "BoxName": "Cube3",      "Width": 4,  "Height": 4,  "Depth": 4,  "WeightKg": 10,  "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 8, "BoxName": "Cube4",      "Width": 4,  "Height": 4,  "Depth": 4,  "WeightKg": 10,  "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 9, "BoxName": "SmallCube1", "Width": 2,  "Height": 2,  "Depth": 2,  "WeightKg": 2,   "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 10,"BoxName": "SmallCube2", "Width": 2,  "Height": 2,  "Depth": 2,  "WeightKg": 2,   "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 11,"BoxName": "SmallCube3", "Width": 2,  "Height": 2,  "Depth": 2,  "WeightKg": 2,   "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 12,"BoxName": "SmallCube4", "Width": 2,  "Height": 2,  "Depth": 2,  "WeightKg": 2,   "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 13,"BoxName": "SmallCube5", "Width": 2,  "Height": 2,  "Depth": 2,  "WeightKg": 2,   "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 14,"BoxName": "SmallCube6", "Width": 2,  "Height": 2,  "Depth": 2,  "WeightKg": 2,   "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 15,"BoxName": "SmallCube7", "Width": 2,  "Height": 2,  "Depth": 2,  "WeightKg": 2,   "IsFragile": false, "AllowRotation": true },
+    { "BoxId": 16,"BoxName": "SmallCube8", "Width": 2,  "Height": 2,  "Depth": 2,  "WeightKg": 2,   "IsFragile": false, "AllowRotation": true }
+  ]
+}

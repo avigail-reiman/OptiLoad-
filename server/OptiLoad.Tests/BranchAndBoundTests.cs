@@ -155,4 +155,52 @@ public class BranchAndBoundTests
         Assert.Equal(2, result.BinsUsed);
         Assert.Equal(2, result.PlacedBoxes.Count);
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // TEST 20
+    // נתוני מבחן אמיתיים: מכולה 589×239×235.
+    // שני ארגזים LARGE-B (200×120×150) חוסמים LARGE-FLAT (230×60×80) אם
+    // מונחים ברוחב 200 (200+200=400 < 589 אבל נשאר 189 < 230).
+    // עם סיבוב לרוחב 120: 120+120=240, נשאר 349 >= 230 → הכל נכנס.
+    // משמעות: B&B עם min-X2 מוצא 1 מכולה ולא 2.
+    // ─────────────────────────────────────────────────────────────────────
+    [Fact]
+    public void Solve_RealContainerData_AllBoxesFitInOneBin()
+    {
+        // מכולה אמיתית: 589 רוחב × 239 גובה × 235 עומק
+        var container = new ContainerDimensions
+        {
+            Width      = 589,
+            Height     = 239,
+            Depth      = 235,
+            MaxWeightKg = 21770
+        };
+        var solver = new BranchAndBoundSolver(container);
+
+        // LARGE-B ×2: 200×150×120 — עם סיבוב, W מינימלי = 120
+        // LARGE-FLAT ×1: 230×80×60 — רוחב 230
+        // קטנים ×7 שמתאימים בקלות
+        var boxes = new List<BoxInstance>
+        {
+            // LARGE-B ×2 — מרכזי: אם W=200, חוסמים LARGE-FLAT; אם W=120, לא
+            MakeInstance(200, 120, 150, 0, allowRotation: true),
+            MakeInstance(200, 120, 150, 1, allowRotation: true),
+            // LARGE-FLAT ×1
+            MakeInstance(230,  80,  60, 2, allowRotation: true),
+            // קטנים
+            MakeInstance( 40,  50,  50, 3, allowRotation: true),
+            MakeInstance( 40,  50,  50, 4, allowRotation: true),
+            MakeInstance( 40,  50,  50, 5, allowRotation: true),
+            MakeInstance( 70,  90,  50, 6, allowRotation: true),
+            MakeInstance( 70,  90,  50, 7, allowRotation: true),
+            MakeInstance( 20,  20,  50, 8, allowRotation: true),
+            MakeInstance( 20,  20,  50, 9, allowRotation: true),
+        };
+
+        var result = solver.Solve(boxes);
+
+        Assert.Equal(1,          result.BinsUsed);
+        Assert.Equal(10,         result.PlacedBoxes.Count);
+        Assert.Empty(result.UnplacedBoxes);
+    }
 }

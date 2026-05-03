@@ -19,7 +19,7 @@ namespace OptiLoad.Core.Algorithms
     {
         private const double Epsilon = 1e-9;
 
-        public static List<PlacedBox> Settle(List<PlacedBox> boxes)
+        public static List<PlacedBox> Settle(List<PlacedBox> boxes, ContainerDimensions? container = null)
         {
             if (boxes.Count == 0) return boxes;
 
@@ -36,9 +36,9 @@ namespace OptiLoad.Core.Algorithms
                     b => b.Instance,
                     b => (b.X1, b.Y1, b.Z1));
 
-                current = CompactX(current);
-                current = CompactZ(current);
-                current = CompactY(current);
+                current = CompactX(current, container);
+                current = CompactZ(current, container);
+                current = CompactY(current, container);
 
                 // בדוק אם משהו זז
                 bool changed = current.Any(b =>
@@ -54,7 +54,7 @@ namespace OptiLoad.Core.Algorithms
         }
 
         // ── הידוק לכיוון X=0 ──────────────────────────────────────────
-        private static List<PlacedBox> CompactX(List<PlacedBox> boxes)
+        private static List<PlacedBox> CompactX(List<PlacedBox> boxes, ContainerDimensions? container)
         {
             var result  = new List<PlacedBox>(boxes.Count);
             foreach (var box in boxes.OrderBy(b => b.X1))
@@ -67,6 +67,9 @@ namespace OptiLoad.Core.Algorithms
                     if (overlapY && overlapZ)
                         newX = Math.Max(newX, placed.X2);
                 }
+                // בדיקת גבולות: אם החדש חורג מהמכולה, שמור על המיקום המקורי
+                if (container != null && newX + box.Rotation.W > container.Width + Epsilon)
+                    newX = box.X1;
                 result.Add(new PlacedBox(box.Instance, new Position3D(newX, box.Y1, box.Z1), box.Rotation)
                     { BinIndex = box.BinIndex });
             }
@@ -74,7 +77,7 @@ namespace OptiLoad.Core.Algorithms
         }
 
         // ── הידוק לכיוון Z=0 ──────────────────────────────────────────
-        private static List<PlacedBox> CompactZ(List<PlacedBox> boxes)
+        private static List<PlacedBox> CompactZ(List<PlacedBox> boxes, ContainerDimensions? container)
         {
             var result = new List<PlacedBox>(boxes.Count);
             foreach (var box in boxes.OrderBy(b => b.Z1))
@@ -87,6 +90,9 @@ namespace OptiLoad.Core.Algorithms
                     if (overlapX && overlapY)
                         newZ = Math.Max(newZ, placed.Z2);
                 }
+                // בדיקת גבולות: אם החדש חורג מהמכולה, שמור על המיקום המקורי
+                if (container != null && newZ + box.Rotation.D > container.Depth + Epsilon)
+                    newZ = box.Z1;
                 result.Add(new PlacedBox(box.Instance, new Position3D(box.X1, box.Y1, newZ), box.Rotation)
                     { BinIndex = box.BinIndex });
             }
@@ -94,12 +100,15 @@ namespace OptiLoad.Core.Algorithms
         }
 
         // ── כבידה ב-Y ─────────────────────────────────────────────────
-        private static List<PlacedBox> CompactY(List<PlacedBox> boxes)
+        private static List<PlacedBox> CompactY(List<PlacedBox> boxes, ContainerDimensions? container)
         {
             var result = new List<PlacedBox>(boxes.Count);
             foreach (var box in boxes.OrderBy(b => b.Y1))
             {
                 double newY = FindYSupport(box, result);
+                // בדיקת גבולות: אם החדש חורג מהמכולה, שמור על המיקום המקורי
+                if (container != null && newY + box.Rotation.H > container.Height + Epsilon)
+                    newY = box.Y1;
                 result.Add(new PlacedBox(box.Instance, new Position3D(box.X1, newY, box.Z1), box.Rotation)
                     { BinIndex = box.BinIndex });
             }

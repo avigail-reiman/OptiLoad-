@@ -37,7 +37,7 @@ namespace OptiLoad.Core.Algorithms
         private const int MaxGlobalNodes = 10_000_000;
 
         /// <summary>מגבלת זמן בשניות. ברירת מחדל: 300. ניתן לשינוי לפני Solve().</summary>
-        public double TimeLimitSeconds { get; set; } = 300.0;
+        public double TimeLimitSeconds { get; set; } = 3600.0;
 
         // ─── נתוני ריצה ──────────────────────────────────────────────────
         private readonly ContainerDimensions _container;
@@ -83,8 +83,7 @@ namespace OptiLoad.Core.Algorithms
             _stopwatch.Restart();
             _greedyFallbackUsed = false;
             _greedyUnplaced     = new List<BoxInstance>();
-            var allBoxes = instances.ToList();
-
+            var allBoxes = instances.ToList(); // All boxes to be packed
             if (allBoxes.Count == 0)
                 return BuildResult(new(), allBoxes, 0, true);
 
@@ -210,12 +209,137 @@ namespace OptiLoad.Core.Algorithms
                 }
             }
 
+            // ── שלב Hole-Filling/Refitting: נסה להכניס כל ארגז שלא שובץ לכל מכולה קיימת ──
+            var bins = RebuildBinsFromPlacements(_bestPlacements);
+            var unplaced = allBoxes.Where(b => !_bestPlacements.Any(p => p.instance.InstanceId == b.InstanceId)).ToList();
+            bool added;
+            do
+            {
+                added = false;
+                foreach (var box in unplaced.ToList())
+                {
+                    for (int binIdx = 0; binIdx < bins.Count; binIdx++)
+                    {
+                        var bin = bins[binIdx];
+                        var corners = CornerPointsFinder.Find3DCorners(bin.PlacedBoxes.ToList(), _container, new[] { box });
+                        foreach (var corner in corners)
+                        {
+                            foreach (var rot in box.BoxDefinition.GetAllowedRotations())
+                            {
+                                var filler = CreateFiller();
+                                if (filler.TryPlaceBox(bin, box, corner, rot, false, out var placed))
+                                {
+                                    bin.AddBox(placed);
+                                    _bestPlacements = _bestPlacements.Concat(new[] { (box, binIdx, placed.Position, placed.Rotation) }).ToList();
+                                    unplaced.Remove(box);
+                                    added = true;
+                                    break;
+                                }
+                            }
+                            if (added) break;
+                        }
+                        if (added) break;
+                    }
+                    if (added) break;
+                }
+            } while (added);
+
             _stopwatch.Stop();
             // חסם תחתון כולל: מקסימום בין שלב 1 לשלב 2
             int overallLowerBound = Math.Max(lowerBound, lbFragile);
             _isOptimal = (_bestBins == overallLowerBound);
 
-            return BuildResult(_bestPlacements, allBoxes, _bestBins, _isOptimal);
+            // ── שלב Repacking/Consolidation: נסה להעביר כל ארגז ממכולה גבוהה לנמוכה ──
+            var binsForRepack = RebuildBinsFromPlacements(_bestPlacements);
+            bool moved;
+            do
+            {
+                moved = false;
+                // עבור כל מכולה (2 והלאה)
+                for (int fromBin = 1; fromBin < binsForRepack.Count; fromBin++)
+                {
+                    var boxesToTry = binsForRepack[fromBin].PlacedBoxes.ToList();
+                    foreach (PlacedBox box in boxesToTry)
+                    {
+                        // נסה לשבץ בכל מכולה קודמת
+                        for (int toBin = 0; toBin < fromBin; toBin++)
+                        {
+                            var toBinState = binsForRepack[toBin];
+                            var corners = CornerPointsFinder.Find3DCorners(toBinState.PlacedBoxes.ToList(), _container, new[] { box.Instance });
+                            bool placed = false;
+                            foreach (var corner in corners)
+                            {
+                                foreach (var rot in box.Instance.BoxDefinition.GetAllowedRotations())
+                                {
+                                    var filler = CreateFiller();
+                                    if (filler.TryPlaceBox(toBinState, box.Instance, corner, rot, false, out var placedBox))
+                                    {
+                                        toBinState.AddBox(placedBox);
+                                        ((List<PlacedBox>)binsForRepack[fromBin].PlacedBoxes).Remove(box);
+                                        moved = true;
+                                        placed = true;
+                                        break;
+                                    }
+                                }
+                                if (placed) break;
+                            }
+                            if (placed) break;
+                        }
+                    }
+                }
+            } while (moved);
+
+            // ── שלב Hole-Filling Brute Force: מלא כל מכולה עד תום ──
+            var repackedPlacements = ExtractPlacements(binsForRepack);
+            var repackedPlacedIds = repackedPlacements.Select(p => p.Item1.InstanceId).ToHashSet();
+            var bruteUnplaced = allBoxes.Where(b => !repackedPlacedIds.Contains(b.InstanceId)).ToList();
+
+
+            // רזולוציה עדינה מאוד
+            double step = 0.1;
+            foreach (var bin in binsForRepack.Select((b, idx) => (b, idx)))
+            {
+                var toPlace = bruteUnplaced.ToList();
+                foreach (var box in toPlace)
+                {
+                    bool placed = false;
+                    foreach (var rot in box.BoxDefinition.GetAllowedRotations())
+                    {
+                        for (double x = 0; x + rot.W <= _container.Width + 1e-6; x += step)
+                        {
+                            for (double y = 0; y + rot.H <= _container.Height + 1e-6; y += step)
+                            {
+                                for (double z = 0; z + rot.D <= _container.Depth + 1e-6; z += step)
+                                {
+                                    var pos = new Position3D(x, y, z);
+                                    var filler = CreateFiller();
+                                    if (filler.TryPlaceBox(bin.b, box, pos, rot, false, out var placedBox))
+                                    {
+                                        bin.b.AddBox(placedBox);
+                                        bruteUnplaced.Remove(box);
+                                        placed = true;
+                                        Console.WriteLine($"[HoleFilling] Box {box.InstanceId} placed in bin {bin.idx} at ({x:F2},{y:F2},{z:F2}) rot={rot}");
+                                        goto NextBox;
+                                    }
+                                    else
+                                    {
+                                        // לוג דיאגנוסטי לכישלון
+                                        //Console.WriteLine($"[HoleFilling] Box {box.InstanceId} FAILED at bin {bin.idx} ({x:F2},{y:F2},{z:F2}) rot={rot}");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                NextBox:
+                    if (!placed)
+                        Console.WriteLine($"[HoleFilling] Box {box.InstanceId} could not be placed in bin {bin.idx}");
+                }
+            }
+
+            var brutePlacements = ExtractPlacements(binsForRepack);
+            int bruteBinsUsed = binsForRepack.Count(b => b.PlacedBoxes.Count > 0);
+
+            return BuildResult(brutePlacements, allBoxes, bruteBinsUsed, _isOptimal);
         }
 
         // ─────────────────────────────────────────────────────────────────
@@ -279,6 +403,19 @@ namespace OptiLoad.Core.Algorithms
             }
 
             // הארגז הבא
+            // --- לוגיקת שכבות ---
+            // קבע את גובה השכבה הנוכחית לפי הארגז הגדול ביותר שטרם שובץ
+            var remainingBoxes = allBoxes.Skip(currentAssignment.Count).ToList();
+            double? currentLayerY = null;
+            double? currentLayerHeight = null;
+            if (remainingBoxes.Count > 0)
+            {
+                var largestBox = remainingBoxes.OrderByDescending(b => b.BoxDefinition.Height).First();
+                currentLayerHeight = largestBox.BoxDefinition.Height;
+                // שכבה מתחילה בגובה Y פנוי מינימלי בכל אחת מהמכולות
+                currentLayerY = openBins.SelectMany(bin => bin.PlacedBoxes.Select(pb => pb.Y2)).DefaultIfEmpty(0).Max();
+            }
+
             var nextBox = allBoxes[currentAssignment.Count];
 
             // ── קיצוץ: חסם תחתון ──
@@ -312,7 +449,8 @@ namespace OptiLoad.Core.Algorithms
             }
 
             bool triedEmptyBin = false;
-            bool placedInExisting = false;  // האם הארגז הצליח להיכנס לאחת המכולות הפתוחות
+            bool placedInExisting = false;
+            int tryCount = 0;
             for (int binIdx = minBinIdx; binIdx < openBins.Count; binIdx++)
             {
                 bool isEmpty = openBins[binIdx].UsedVolume < 1e-9;
@@ -322,7 +460,8 @@ namespace OptiLoad.Core.Algorithms
                     triedEmptyBin = true;
                 }
 
-                if (TryAssignToBin(nextBox, binIdx, openBins, fragilePhase))
+                // ננסה כל פינה חוקית, בכל סיבוב, בכל מכולה קיימת
+                if (TryAssignToBin_Exhaustive(nextBox, binIdx, openBins, fragilePhase, out var placement, currentLayerY, currentLayerHeight))
                 {
                     placedInExisting = true;
                     currentAssignment.Add((nextBox, binIdx));
@@ -330,23 +469,41 @@ namespace OptiLoad.Core.Algorithms
                     currentAssignment.RemoveAt(currentAssignment.Count - 1);
                     UndoAssignToBin(nextBox, binIdx, openBins, fragilePhase);
                 }
+                tryCount++;
             }
 
-            // ── ענף 2: פתח מכולה חדשה ──
-            // תנאי מחמיר: פתח מכולה חדשה רק אם הארגז לא הצליח להיכנס לשום מכולה פתוחה.
-            // "אל תפתח מכולה כשיש מכולות פתוחות שיכולות לאכסן את הארגז"
+            // פתח מכולה חדשה רק אם מוצה כל ניסיון שיבוץ בכל המכולות הקיימות
             if (!placedInExisting && openBins.Count - binOffset + 1 < bestNewBins)
             {
-                var filler     = CreateFiller();
-                var filledState = filler.FillBin(
-                    new[] { nextBox },
-                    fragilePhase: fragilePhase,
-                    existingState: null);
+                var initFiller    = CreateFiller();
+                PlacedBox? initPlacement = null;
+                double initBestX2 = double.MaxValue;
+                double initBestY2 = double.MaxValue;
 
-                if (filledState.Count > 0)
+                foreach (var rot in nextBox.BoxDefinition.GetAllowedRotations())
                 {
-                    openBins.Add(filledState);
+                    if (initFiller.TryPlaceBox(new PackingState(), nextBox,
+                                               new Position3D(0, 0, 0), rot,
+                                               fragilePhase, out var p))
+                    {
+                        if (p!.X2 < initBestX2 - 1e-9 ||
+                            (p.X2 <= initBestX2 + 1e-9 && p.Y2 < initBestY2 - 1e-9))
+                        {
+                            initBestX2 = p.X2;
+                            initBestY2 = p.Y2;
+                            initPlacement = p;
+                        }
+                    }
+                }
+
+                if (initPlacement != null)
+                {
+                    var newBinState = new PackingState();
+                    newBinState.AddBox(initPlacement);
+                    openBins.Add(newBinState);
                     currentAssignment.Add((nextBox, openBins.Count - 1));
+
+                    Console.WriteLine($"[OptiLoad][DEBUG] פותח מכולה חדשה לארגז {nextBox.InstanceId} לאחר שמוצה כל ניסיון שיבוץ בכל המכולות הקיימות ({tryCount} ניסיונות)");
 
                     BranchMain(allBoxes, currentAssignment, openBins, lowerBound, fragilePhase, binOffset);
 
@@ -360,34 +517,47 @@ namespace OptiLoad.Core.Algorithms
         // ניסיון הוספת ארגז למכולה פתוחה
         // ─────────────────────────────────────────────────────────────────
 
-        private bool TryAssignToBin(
+        // ממצה כל פינה חוקית, בכל סיבוב, בכל מכולה קיימת
+        private bool TryAssignToBin_Exhaustive(
             BoxInstance        box,
             int                binIdx,
             List<PackingState> openBins,
-            bool               fragilePhase)
+            bool               fragilePhase,
+            out PlacedBox? placement,
+            double? currentLayerY = null,
+            double? currentLayerHeight = null)
         {
-            // גישה הדרגתית: מנסה למקם רק את הארגז החדש בנקודות פינה של המצב הנוכחי.
-            // הארגזים הקיימים במכולה כבר ממוקמים תקין – אין צורך לוודא אותם מחדש.
             var currentState = openBins[binIdx];
             var corners = CornerPointsFinder.Find3DCorners(
                 currentState.PlacedBoxes.ToList(), _container, new[] { box });
 
-            // מיין נקודות פינה לפי Y עולה — תמיד נסה הנמוכה ביותר קודם
             var sortedCorners = corners.OrderBy(c => c.Y).ThenBy(c => c.X).ThenBy(c => c.Z).ToList();
-
             var filler = CreateFiller();
+
             foreach (var rotation in box.BoxDefinition.GetAllowedRotations())
             {
                 foreach (var corner in sortedCorners)
                 {
+                    // שכבתיות: נסה קודם כל פינות בגובה השכבה הנוכחית בלבד
+                    if (currentLayerY.HasValue && currentLayerHeight.HasValue)
+                    {
+                        // אם הפינה לא בשכבה הנוכחית, דלג
+                        if (Math.Abs(corner.Y - currentLayerY.Value) > 1e-6)
+                            continue;
+                        // אם הארגז לא נכנס בגובה השכבה, דלג
+                        if (corner.Y + rotation.H > currentLayerY.Value + currentLayerHeight.Value + 1e-6)
+                            continue;
+                    }
                     if (filler.TryPlaceBox(currentState, box, corner, rotation,
                                           fragilePhase, out var placed))
                     {
-                        currentState.AddBox(placed!);
+                        currentState.AddBox(placed);
+                        placement = placed;
                         return true;
                     }
                 }
             }
+            placement = null;
             return false;
         }
 
@@ -521,7 +691,7 @@ namespace OptiLoad.Core.Algorithms
             // הפעל כוח משיכה: הורד כל ארגז לנקודה הנמוכה ביותר האפשרית (מכולה בכולה)
             var placedBoxes = rawPlaced
                 .GroupBy(pb => pb.BinIndex)
-                .SelectMany(g => GravitySettler.Settle(g.ToList()))
+                .SelectMany(g => GravitySettler.Settle(g.ToList(), _container))
                 .ToList();
 
             double totalVolume = placedBoxes.Sum(pb => pb.Volume);

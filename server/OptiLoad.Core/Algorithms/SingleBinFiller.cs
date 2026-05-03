@@ -27,7 +27,7 @@ namespace OptiLoad.Core.Algorithms
     public class SingleBinFiller
     {
         // ─── קבועים ──────────────────────────────────────────────────────
-        private const int    MaxNodes = 300_000;  // מגבלת צמתים
+        private const int    MaxNodes = 10_000_000;  // מגבלת צמתים
         private const double Epsilon  = 1e-9;    // סבילות השוואה
 
         /// <summary>

@@ -86,6 +86,37 @@ td input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:#58a6
 ::-webkit-scrollbar-track{background:#0d1117}
 ::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:#484f58}
+
+/* ── כפתורי הרצה ── */
+.run-wrap{display:flex;gap:8px;margin-top:10px}
+.btn-run{flex:1;border-radius:8px;color:#fff;cursor:pointer;
+         font-size:13px;font-weight:700;padding:11px 4px;
+         letter-spacing:.3px;transition:all .15s;border:1px solid}
+.btn-run:disabled{background:#1c2128!important;border-color:#30363d!important;
+                  color:#484f58!important;cursor:not-allowed!important;box-shadow:none!important}
+#run-instant-btn{background:linear-gradient(135deg,#238636,#1a7f37);
+                 border-color:#2ea043;box-shadow:0 2px 8px rgba(35,134,54,.3)}
+#run-instant-btn:hover:not(:disabled){background:linear-gradient(135deg,#2ea043,#238636);
+  box-shadow:0 4px 16px rgba(35,134,54,.4)}
+#run-step-btn{background:linear-gradient(135deg,#1f6feb,#0d419d);
+              border-color:#388bfd;box-shadow:0 2px 8px rgba(31,111,235,.3)}
+#run-step-btn:hover:not(:disabled){background:linear-gradient(135deg,#388bfd,#1f6feb);
+  box-shadow:0 4px 16px rgba(31,111,235,.4)}
+
+/* ── פאנל שלב-בשלב ── */
+#step-panel{background:#0d1117;border:1px solid #1f6feb;
+            border-radius:8px;padding:10px;margin-top:12px}
+.btn-step-nav{background:#1f6feb;border:1px solid #388bfd;border-radius:7px;
+              color:#fff;cursor:pointer;font-size:12px;font-weight:700;
+              padding:9px 4px;width:100%;transition:background .15s}
+.btn-step-nav:hover:not(:disabled){background:#388bfd}
+.btn-step-nav:disabled{background:#21262d;border-color:#30363d;
+                       color:#484f58;cursor:not-allowed}
+.btn-step-fin{background:#21262d;border:1px solid #30363d;border-radius:7px;
+              color:#8b949e;cursor:pointer;font-size:12px;font-weight:700;
+              padding:9px 4px;width:100%;transition:background .15s}
+.btn-step-fin:hover{background:#30363d;color:#e6edf3}
+.step-highlight{color:#58a6ff!important}
 </style>
 </head>
 <body>
@@ -151,7 +182,39 @@ td input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:#58a6
   </div>
 
   <!-- Run -->
-  <button id="run-btn" type="button" style="margin-top:10px">▶  הרץ שיבוץ</button>
+  <div class="run-wrap">
+    <button id="run-instant-btn" class="btn-run" type="button">▶ הרץ מידית</button>
+    <button id="run-step-btn"    class="btn-run" type="button">👣 שלב-בשלב</button>
+  </div>
+
+  <!-- Step panel -->
+  <div id="step-panel" style="display:none">
+    <div class="sec-hdr" style="margin-bottom:6px">📦 ארגז נוכחי</div>
+    <div class="stat-row">
+      <span>שם</span>
+      <span class="stat-val step-highlight" id="step-name">—</span>
+    </div>
+    <div class="stat-row">
+      <span>קואורד. (X, Y, Z)</span>
+      <span class="stat-val" id="step-coords">—</span>
+    </div>
+    <div class="stat-row">
+      <span>מידות W×H×D</span>
+      <span class="stat-val" id="step-dims">—</span>
+    </div>
+    <div class="stat-row">
+      <span>מכולה</span>
+      <span class="stat-val" id="step-bin">—</span>
+    </div>
+    <div class="stat-row" style="border-bottom:none">
+      <span>התקדמות</span>
+      <span class="stat-val" id="step-counter">—</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button id="step-next-btn"   class="btn-step-nav">הבא ▶</button>
+      <button id="step-finish-btn" class="btn-step-fin">הצג הכל ⏭</button>
+    </div>
+  </div>
 
   <!-- Results -->
   <div id="sec-results" style="display:none">
@@ -403,11 +466,121 @@ function renderResult(data) {
   document.getElementById('sec-legend').style.display = 'block';
 }
 
+// ─── Step-by-step state ──────────────────────────────────────────
+let stepData         = [];
+let stepIndex        = -1;
+let stepMeshPairs    = [];   // [{mesh, edges}] — אחד לכל ארגז שהוצג
+let lastApiData      = null;
+let stepContInfo     = null; // {CW, CH, CD, GAP}
+
+// ─── הוספת ארגז בודד לסצנה (מצב שלב-בשלב) ────────────────────────
+function addStepBoxMesh(pb, highlight) {
+  const {CW, GAP} = stepContInfo;
+  const ox = (pb.binIndex || 0) * (CW + GAP);
+  const bw = pb.x2 - pb.x1, bh = pb.y2 - pb.y1, bd = pb.z2 - pb.z1;
+  const col = getColor(pb.name, pb.isFragile);
+
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(bw - .8, bh - .8, bd - .8),
+    new THREE.MeshLambertMaterial({
+      color: col, transparent: true,
+      opacity: highlight ? 1.0 : 0.84
+    })
+  );
+  mesh.position.set(ox + pb.x1 + bw / 2, pb.y1 + bh / 2, pb.z1 + bd / 2);
+  mesh.castShadow = mesh.receiveShadow = true;
+  scene.add(mesh);
+
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(mesh.geometry),
+    new THREE.LineBasicMaterial({
+      color: highlight ? 0xffffff : 0x000000,
+      transparent: true,
+      opacity: highlight ? 0.95 : 0.35
+    })
+  );
+  edges.position.copy(mesh.position);
+  scene.add(edges);
+
+  return {mesh, edges};
+}
+
+// ─── מעבר לשלב הבא ───────────────────────────────────────────────
+function advanceStep() {
+  // בטל הדגשה מהארגז הקודם
+  if (stepIndex >= 0 && stepIndex < stepMeshPairs.length) {
+    const {mesh, edges} = stepMeshPairs[stepIndex];
+    mesh.material.opacity = 0.84;
+    edges.material.color.set(0x000000);
+    edges.material.opacity = 0.35;
+  }
+
+  stepIndex++;
+  if (stepIndex >= stepData.length) {
+    document.getElementById('step-next-btn').disabled = true;
+    document.getElementById('step-counter').textContent = `✅ הושלם — ${stepData.length} ארגזים`;
+    return;
+  }
+
+  const pb   = stepData[stepIndex];
+  const pair = addStepBoxMesh(pb, true);
+  stepMeshPairs.push(pair);
+
+  // עדכון פאנל מידע
+  document.getElementById('step-name').textContent    = pb.name + (pb.isFragile ? ' 🔶' : '');
+  document.getElementById('step-coords').textContent  = `(${pb.x1}, ${pb.y1}, ${pb.z1})`;
+  document.getElementById('step-dims').textContent    = `${pb.x2-pb.x1} × ${pb.y2-pb.y1} × ${pb.z2-pb.z1} ס"מ`;
+  document.getElementById('step-bin').textContent     = `מכולה ${(pb.binIndex||0)+1}`;
+  document.getElementById('step-counter').textContent = `${stepIndex+1} / ${stepData.length}`;
+  document.getElementById('step-next-btn').disabled   = (stepIndex+1 >= stepData.length);
+  if (stepIndex+1 >= stepData.length)
+    document.getElementById('step-counter').textContent = `✅ הושלם — ${stepData.length} ארגזים`;
+}
+
+// ─── ציור מסגרות מכולה בלבד (לשני המצבים) ───────────────────────
+function drawContainerFrames(data) {
+  const CW = data.containerW, CH = data.containerH, CD = data.containerD;
+  const GAP = Math.max(80, CW * 0.15);
+  const totalW = data.binsUsed * (CW + GAP) - GAP;
+
+  const grid = new THREE.GridHelper(
+    Math.max(totalW * 1.6, 1000), 60, 0x161b22, 0x21262d
+  );
+  grid.position.set(totalW / 2, -0.5, CD / 2);
+  scene.add(grid);
+
+  for (let b = 0; b < data.binsUsed; b++) {
+    const ox  = b * (CW + GAP);
+    const col = new THREE.Color(b === 0 ? 0x58a6ff : 0x3fb950);
+    const ls  = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(CW, CH, CD)),
+      new THREE.LineBasicMaterial({color: col, transparent: true, opacity: .75})
+    );
+    ls.position.set(ox + CW / 2, CH / 2, CD / 2);
+    scene.add(ls);
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(CW, CD),
+      new THREE.MeshStandardMaterial({
+        color: b === 0 ? 0x0c1f35 : 0x0c2512,
+        transparent: true, opacity: .35, roughness: 1
+      })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(ox + CW / 2, 0.3, CD / 2);
+    floor.receiveShadow = true;
+    scene.add(floor);
+  }
+
+  return {CW, CH, CD, GAP, totalW};
+}
+
 // ─── Call API ─────────────────────────────────────────────────────
-async function runPacking() {
-  const btn = document.getElementById('run-btn');
-  const ldr = document.getElementById('loading');
-  btn.disabled = true;
+async function runPacking(mode) {
+  const btnI = document.getElementById('run-instant-btn');
+  const btnS = document.getElementById('run-step-btn');
+  const ldr  = document.getElementById('loading');
+  btnI.disabled = btnS.disabled = true;
   ldr.classList.add('show');
 
   const payload = {
@@ -428,11 +601,43 @@ async function runPacking() {
       body:    JSON.stringify(payload)
     });
     if (!res.ok) throw new Error('שגיאת שרת ' + res.status);
-    renderResult(await res.json());
+    const data = await res.json();
+    lastApiData = data;
+
+    if (mode === 'step') {
+      // ── מצב שלב-בשלב ──────────────────────────────────────────
+      stepData      = data.placedBoxes || [];
+      stepIndex     = -1;
+      stepMeshPairs = [];
+
+      clearScene();
+      const {CW, CH, CD, GAP, totalW} = drawContainerFrames(data);
+      stepContInfo = {CW, CH, CD, GAP};
+
+      // מצלמה
+      control.target.set(totalW / 2, CH / 2, CD / 2);
+      camera.position.set(totalW / 2 + CW * .4, CH * 1.9, CD * 3.4);
+      control.update();
+
+      // הצג פאנל שלב, הסתר תוצאות
+      document.getElementById('step-panel').style.display   = 'block';
+      document.getElementById('sec-results').style.display  = 'none';
+      document.getElementById('sec-legend').style.display   = 'none';
+      document.getElementById('step-next-btn').disabled     = false;
+
+      // הצג ארגז ראשון מיד
+      advanceStep();
+
+    } else {
+      // ── מצב מידי ──────────────────────────────────────────────
+      document.getElementById('step-panel').style.display = 'none';
+      renderResult(data);
+    }
+
   } catch (e) {
     alert('שגיאה: ' + e.message);
   } finally {
-    btn.disabled = false;
+    btnI.disabled = btnS.disabled = false;
     ldr.classList.remove('show');
   }
 }
@@ -440,8 +645,16 @@ async function runPacking() {
 // Auto-run demo on page load
 window.addEventListener('load', () => {
   document.getElementById('btn-add-row').addEventListener('click', () => addBoxRow());
-  document.getElementById('run-btn').addEventListener('click', runPacking);
-  setTimeout(runPacking, 150);
+  document.getElementById('run-instant-btn').addEventListener('click', () => runPacking('instant'));
+  document.getElementById('run-step-btn').addEventListener('click',    () => runPacking('step'));
+  document.getElementById('step-next-btn').addEventListener('click',   advanceStep);
+  document.getElementById('step-finish-btn').addEventListener('click', () => {
+    if (lastApiData) {
+      document.getElementById('step-panel').style.display = 'none';
+      renderResult(lastApiData);
+    }
+  });
+  setTimeout(() => runPacking('instant'), 150);
 });
 </script>
 </body>
