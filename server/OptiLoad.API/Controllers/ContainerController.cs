@@ -1,13 +1,11 @@
-using System;
+﻿using System;
 using Microsoft.AspNetCore.Mvc;
 using OptiLoad.Core.Models;
 using OptiLoad.Data;
 
 namespace OptiLoad.API.Controllers
 {
-    /// <summary>
-    /// ניהול תבניות ומופעי מכולות
-    /// </summary>
+
     [ApiController]
     [Route("api/[controller]")]
     public class ContainerController : ControllerBase
@@ -19,7 +17,6 @@ namespace OptiLoad.API.Controllers
             _db = db;
         }
 
-        /// <summary>שליפת כל תבניות המכולות</summary>
         [HttpGet("templates")]
         public async Task<ActionResult<IEnumerable<ContainerTemplate>>> GetTemplates()
         {
@@ -27,7 +24,6 @@ namespace OptiLoad.API.Controllers
             return Ok(templates);
         }
 
-        /// <summary>שליפת תבנית לפי מזהה</summary>
         [HttpGet("templates/{id}")]
         public async Task<ActionResult<ContainerTemplate>> GetTemplateById(int id)
         {
@@ -36,7 +32,6 @@ namespace OptiLoad.API.Controllers
             return Ok(template);
         }
 
-        /// <summary>שליפת כל המכולות</summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Container>>> GetAll()
         {
@@ -44,7 +39,6 @@ namespace OptiLoad.API.Controllers
             return Ok(containers);
         }
 
-        /// <summary>יצירת תבנית מכולה חדשה</summary>
         [HttpPost("templates")]
         public async Task<ActionResult<int>> CreateTemplate([FromBody] ContainerTemplate template)
         {

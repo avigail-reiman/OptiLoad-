@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using OptiLoad.Core.Services;
 
 class TestDataMain

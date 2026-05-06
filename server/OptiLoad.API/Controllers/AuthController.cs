@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using OptiLoad.Core.Services;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
@@ -12,7 +12,7 @@ namespace OptiLoad.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAdminService _adminService;
-        private readonly string _jwtKey = "SuperSecretKeyForJwtSignature123!"; // move to config
+        private readonly string _jwtKey = "SuperSecretKeyForJwtSignature123!"; 
 
         public AuthController(IAdminService adminService)
         {

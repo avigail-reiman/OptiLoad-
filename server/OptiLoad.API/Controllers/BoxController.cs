@@ -1,12 +1,10 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using OptiLoad.Core.Models;
 using OptiLoad.Data;
 
 namespace OptiLoad.API.Controllers
 {
-    /// <summary>
-    /// ניהול ארגזים – CRUD בסיסי
-    /// </summary>
+
     [ApiController]
     [Route("api/[controller]")]
     public class BoxController : ControllerBase
@@ -18,7 +16,6 @@ namespace OptiLoad.API.Controllers
             _db = db;
         }
 
-        /// <summary>שליפת כל הארגזים</summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Box>>> GetAll()
         {
@@ -26,7 +23,6 @@ namespace OptiLoad.API.Controllers
             return Ok(boxes);
         }
 
-        /// <summary>שליפת ארגז לפי מזהה</summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<Box>> GetById(int id)
         {
@@ -35,7 +31,6 @@ namespace OptiLoad.API.Controllers
             return Ok(box);
         }
 
-        /// <summary>הוספת ארגז חדש</summary>
         [HttpPost]
         public async Task<ActionResult<int>> Create([FromBody] Box box)
         {
@@ -43,7 +38,6 @@ namespace OptiLoad.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = newId }, newId);
         }
 
-        /// <summary>עדכון ארגז קיים</summary>
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] Box box)
         {
@@ -53,7 +47,6 @@ namespace OptiLoad.API.Controllers
             return NoContent();
         }
 
-        /// <summary>מחיקת ארגז</summary>
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

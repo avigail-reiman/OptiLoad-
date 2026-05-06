@@ -1,10 +1,8 @@
-using System;
+﻿using System;
 
 namespace OptiLoad.Core.Models
 {
-    /// <summary>
-    /// מופע פיזי של מכולה (טבלה: Container)
-    /// </summary>
+
     public class Container
     {
         public int               ContainerId   { get; set; }
@@ -13,8 +11,7 @@ namespace OptiLoad.Core.Models
         public ContainerStatus   Status        { get; set; } = ContainerStatus.Available;
         public DateTime          CreatedAt     { get; set; }
 
-        // ניווט
-        public ContainerTemplate? Template { get; set; }
+public ContainerTemplate? Template { get; set; }
 
         public override string ToString() =>
             $"Container[{ContainerCode}] Status={Status}";

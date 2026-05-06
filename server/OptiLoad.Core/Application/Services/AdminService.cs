@@ -1,4 +1,4 @@
-using OptiLoad.Core.Models;
+﻿using OptiLoad.Core.Models;
 using System.Linq;
 
 namespace OptiLoad.Core.Services
@@ -10,11 +10,11 @@ namespace OptiLoad.Core.Services
 
     public class AdminService : IAdminService
     {
-        private readonly List<Admin> _admins; // Replace with DB context in real app
+        private readonly List<Admin> _admins; 
 
         public AdminService()
         {
-            // Example admin: username=admin, password=admin123 (hashed)
+            
             PasswordHasher.CreatePasswordHash("admin123", out var hash, out var salt);
             _admins = new List<Admin>
             {
