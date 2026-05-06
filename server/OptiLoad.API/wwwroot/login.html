@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OptiLoad – כניסה</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:#0d1117;
+  color:#e6edf3;
+  font-family:'Segoe UI',Tahoma,Arial,sans-serif;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+
+/* רקע עם אנימציה */
+.bg{
+  position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%,rgba(31,111,235,.18),transparent),
+    radial-gradient(ellipse 60% 40% at 80% 110%,rgba(35,134,54,.12),transparent);
+}
+
+/* כרטיס לוגין */
+.card{
+  position:relative;z-index:1;
+  background:rgba(22,27,34,.92);
+  border:1px solid #30363d;
+  border-radius:16px;
+  padding:44px 48px;
+  width:100%;
+  max-width:420px;
+  box-shadow:0 8px 40px rgba(0,0,0,.6);
+  backdrop-filter:blur(8px);
+}
+
+.logo{
+  text-align:center;
+  margin-bottom:32px;
+}
+.logo-icon{
+  font-size:48px;
+  display:block;
+  margin-bottom:8px;
+  filter:drop-shadow(0 0 12px rgba(88,166,255,.4));
+}
+.logo h1{
+  font-size:26px;
+  color:#58a6ff;
+  letter-spacing:.5px;
+}
+.logo p{
+  font-size:12px;
+  color:#6e7681;
+  margin-top:4px;
+}
+
+.form-group{
+  margin-bottom:18px;
+}
+.form-group label{
+  display:block;
+  font-size:12px;
+  color:#8b949e;
+  margin-bottom:6px;
+  font-weight:600;
+}
+.form-group input{
+  width:100%;
+  background:#0d1117;
+  border:1px solid #30363d;
+  border-radius:8px;
+  color:#e6edf3;
+  padding:11px 14px;
+  font-size:14px;
+  font-family:inherit;
+  outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.form-group input:focus{
+  border-color:#58a6ff;
+  box-shadow:0 0 0 3px rgba(88,166,255,.15);
+}
+.form-group input::placeholder{color:#484f58}
+
+.input-wrap{position:relative}
+.toggle-pw{
+  position:absolute;
+  left:12px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;
+  color:#6e7681;font-size:16px;padding:2px;
+  transition:color .15s;
+}
+.toggle-pw:hover{color:#8b949e}
+
+.btn-login{
+  width:100%;
+  background:linear-gradient(135deg,#1f6feb,#0d419d);
+  border:1px solid #388bfd;
+  border-radius:8px;
+  color:#fff;
+  cursor:pointer;
+  font-size:15px;
+  font-weight:700;
+  padding:12px;
+  letter-spacing:.4px;
+  transition:all .15s;
+  box-shadow:0 2px 8px rgba(31,111,235,.3);
+  margin-top:8px;
+}
+.btn-login:hover:not(:disabled){
+  background:linear-gradient(135deg,#388bfd,#1f6feb);
+  box-shadow:0 4px 20px rgba(31,111,235,.5);
+  transform:translateY(-1px);
+}
+.btn-login:disabled{
+  background:#1c2128;border-color:#30363d;
+  color:#484f58;cursor:not-allowed;
+  box-shadow:none;transform:none;
+}
+
+.error-msg{
+  display:none;
+  background:rgba(248,81,73,.12);
+  border:1px solid rgba(248,81,73,.4);
+  border-radius:8px;
+  color:#f85149;
+  font-size:12px;
+  padding:10px 14px;
+  margin-top:14px;
+  text-align:center;
+}
+.error-msg.show{display:block}
+
+.spinner-wrap{
+  display:none;
+  justify-content:center;
+  margin-top:14px;
+}
+.spinner-wrap.show{display:flex}
+.spinner{
+  width:24px;height:24px;
+  border:3px solid #21262d;
+  border-top-color:#58a6ff;
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.footer-note{
+  text-align:center;
+  font-size:11px;
+  color:#484f58;
+  margin-top:28px;
+}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+
+<div class="card">
+  <div class="logo">
+    <span class="logo-icon">🚛</span>
+    <h1>OptiLoad</h1>
+    <p>מערכת שיבוץ ארגזים אופטימלי</p>
+  </div>
+
+  <form id="login-form" autocomplete="off" novalidate>
+    <div class="form-group">
+      <label for="username">שם משתמש</label>
+      <input id="username" type="text" placeholder="הכנס שם משתמש"
+             autocomplete="username" required>
+    </div>
+
+    <div class="form-group">
+      <label for="password">סיסמה</label>
+      <div class="input-wrap">
+        <input id="password" type="password" placeholder="הכנס סיסמה"
+               autocomplete="current-password" required>
+        <button type="button" class="toggle-pw" id="toggle-pw" title="הצג/הסתר סיסמה">👁</button>
+      </div>
+    </div>
+
+    <button type="submit" class="btn-login" id="login-btn">כניסה למערכת</button>
+    <div class="error-msg" id="error-msg">שם משתמש או סיסמה שגויים</div>
+    <div class="spinner-wrap" id="spinner"><div class="spinner"></div></div>
+  </form>
+
+  <div class="footer-note">OptiLoad v1.0 &nbsp;·&nbsp; גישה מורשית בלבד</div>
+</div>
+
+<script>
+const API = 'http://localhost:5098';
+
+document.getElementById('toggle-pw').addEventListener('click', () => {
+  const inp = document.getElementById('password');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+});
+
+document.getElementById('login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const errEl    = document.getElementById('error-msg');
+  const btn      = document.getElementById('login-btn');
+  const spinner  = document.getElementById('spinner');
+
+  if (!username || !password) {
+    errEl.textContent = 'נא למלא שם משתמש וסיסמה';
+    errEl.classList.add('show');
+    return;
+  }
+
+  errEl.classList.remove('show');
+  btn.disabled = true;
+  spinner.classList.add('show');
+
+  try {
+    const res = await fetch(`${API}/api/auth/login`, {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify({ username, password })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      sessionStorage.setItem('optiload_token', data.token);
+      window.location.href = '01_main-packing-interface.html';
+    } else if (res.status === 401) {
+      errEl.textContent = 'שם משתמש או סיסמה שגויים';
+      errEl.classList.add('show');
+      document.getElementById('password').value = '';
+      document.getElementById('password').focus();
+    } else {
+      errEl.textContent = 'שגיאת שרת — נסה שוב מאוחר יותר';
+      errEl.classList.add('show');
+    }
+  } catch {
+    errEl.textContent = 'לא ניתן להתחבר לשרת';
+    errEl.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    spinner.classList.remove('show');
+  }
+});
+
+// אם כבר מחובר — עבור ישירות
+if (sessionStorage.getItem('optiload_token'))
+  window.location.href = '01_main-packing-interface.html';
+</script>
+</body>
+</html>

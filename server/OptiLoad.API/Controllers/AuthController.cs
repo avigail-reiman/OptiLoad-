@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using OptiLoad.Core.Services;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
@@ -12,22 +13,24 @@ namespace OptiLoad.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAdminService _adminService;
-        private readonly string _jwtKey = "SuperSecretKeyForJwtSignature123!"; 
+        private readonly string _jwtKey;
 
-        public AuthController(IAdminService adminService)
+        public AuthController(IAdminService adminService, IConfiguration configuration)
         {
             _adminService = adminService;
+            _jwtKey = configuration["Jwt:Key"]
+                ?? throw new InvalidOperationException("JWT key is not configured.");
         }
 
         [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginRequest req)
+        public async Task<IActionResult> Login([FromBody] LoginRequest req)
         {
-            var admin = _adminService.Authenticate(req.Username, req.Password);
+            var admin = await _adminService.AuthenticateAsync(req.Username, req.Password);
             if (admin == null)
                 return Unauthorized("Invalid credentials");
 
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_jwtKey);
+            var key = Encoding.UTF8.GetBytes(_jwtKey);
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]

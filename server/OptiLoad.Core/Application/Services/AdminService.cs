@@ -1,34 +1,36 @@
 ﻿using OptiLoad.Core.Models;
-using System.Linq;
 
 namespace OptiLoad.Core.Services
 {
     public interface IAdminService
     {
-        Admin? Authenticate(string username, string password);
+        Task<Admin?> AuthenticateAsync(string username, string password);
+        Task SeedDefaultAdminIfEmptyAsync();
     }
 
     public class AdminService : IAdminService
     {
-        private readonly List<Admin> _admins; 
+        private readonly IAdminRepository _repo;
 
-        public AdminService()
+        public AdminService(IAdminRepository repo)
         {
-            
-            PasswordHasher.CreatePasswordHash("admin123", out var hash, out var salt);
-            _admins = new List<Admin>
-            {
-                new Admin { Id = 1, Username = "admin", PasswordHash = hash, PasswordSalt = salt }
-            };
+            _repo = repo;
         }
 
-        public Admin? Authenticate(string username, string password)
+        public async Task<Admin?> AuthenticateAsync(string username, string password)
         {
-            var admin = _admins.FirstOrDefault(a => a.Username == username);
+            var admin = await _repo.GetAdminByUsername(username);
             if (admin == null) return null;
             if (!PasswordHasher.VerifyPassword(password, admin.PasswordHash, admin.PasswordSalt))
                 return null;
             return admin;
+        }
+
+        public async Task SeedDefaultAdminIfEmptyAsync()
+        {
+            if (await _repo.AdminsExist()) return;
+            PasswordHasher.CreatePasswordHash("Admin@1234!", out var hash, out var salt);
+            await _repo.CreateAdmin("admin", hash, salt);
         }
     }
 }

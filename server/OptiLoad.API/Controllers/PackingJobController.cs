@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using OptiLoad.Core.Models;
 using OptiLoad.Core.Services;
 using OptiLoad.Data;
 
 namespace OptiLoad.API.Controllers
 {
-
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class PackingJobController : ControllerBase

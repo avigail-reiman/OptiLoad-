@@ -133,9 +133,12 @@ td input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:#58a6
 <!-- ═══ Sidebar ═══ -->
 <aside id="sidebar">
 
-  <div>
-    <h1>🚛 OptiLoad 3D</h1>
-    <div class="sub">שיבוץ ארגזים אופטימלי בקונטיינרים</div>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+    <div>
+      <h1>🚛 OptiLoad 3D</h1>
+      <div class="sub">שיבוץ ארגזים אופטימלי בקונטיינרים</div>
+    </div>
+    <button id="logout-btn" title="יציאה" style="background:#21262d;border:1px solid #30363d;border-radius:7px;color:#f85149;cursor:pointer;font-size:12px;padding:5px 10px;white-space:nowrap;flex-shrink:0;margin-top:2px">⬅ יציאה</button>
   </div>
 
   <!-- Container -->
@@ -252,6 +255,22 @@ td input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:#58a6
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
+// ─── Auth guard ──────────────────────────────────────────────────
+const TOKEN_KEY = 'optiload_token';
+const _token = sessionStorage.getItem(TOKEN_KEY);
+if (!_token) { window.location.replace('login.html'); }
+function getAuthHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + sessionStorage.getItem(TOKEN_KEY)
+  };
+}
+function logout() {
+  sessionStorage.removeItem(TOKEN_KEY);
+  window.location.replace('login.html');
+}
+document.getElementById('logout-btn').addEventListener('click', logout);
+
 // ─── Default demo boxes ──────────────────────────────────────────
 const DEMO = [
   {name:'TINY-A',    w:20,  h:20,  d:20,  kg:1,  qty:10, fragile:false, rot:true},
@@ -606,9 +625,10 @@ async function runPacking(mode) {
   try {
     const res = await fetch('http://localhost:5098/api/visualization/run', {
       method:  'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: getAuthHeaders(),
       body:    JSON.stringify(payload)
     });
+    if (res.status === 401) { logout(); return; }
     if (!res.ok) throw new Error('שגיאת שרת ' + res.status);
     const data = await res.json();
     lastApiData = data;

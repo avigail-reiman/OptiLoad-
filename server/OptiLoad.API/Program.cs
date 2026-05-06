@@ -20,7 +20,11 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DevFrontend", policy =>
-        policy.SetIsOriginAllowed(_ => true)
+        policy.WithOrigins(
+                "http://localhost:5098",
+                "http://127.0.0.1:5098",
+                "http://localhost:5500",
+                "http://127.0.0.1:5500")
               .AllowAnyHeader()
               .AllowAnyMethod());
 });
@@ -28,11 +32,16 @@ builder.Services.AddCors(options =>
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
 builder.Services.AddSingleton<DatabaseService>(new DatabaseService(connectionString));
 builder.Services.AddSingleton<IPackingRepository>(sp => sp.GetRequiredService<DatabaseService>());
+builder.Services.AddSingleton<IAdminRepository>(sp => sp.GetRequiredService<DatabaseService>());
 builder.Services.AddScoped<PackingService>(sp =>
     new PackingService(sp.GetRequiredService<IPackingRepository>()));
 
-builder.Services.AddScoped<IAdminService, AdminService>();
-var jwtKey = "SuperSecretKeyForJwtSignature123!"; 
+builder.Services.AddScoped<IAdminService, AdminService>(sp =>
+    new AdminService(sp.GetRequiredService<IAdminRepository>()));
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("JWT key is not configured (Jwt:Key).");
+if (jwtKey.Length < 32)
+    throw new InvalidOperationException("JWT key must be at least 32 characters.");
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -43,7 +52,7 @@ builder.Services.AddAuthentication(options =>
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtKey)),
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
         ValidateIssuer = false,
         ValidateAudience = false
     };
@@ -53,15 +62,26 @@ var app = builder.Build();
 
 app.UseResponseCompression();
 app.UseAuthentication();
+app.UseAuthorization();
+
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var adminSvc = scope.ServiceProvider.GetRequiredService<IAdminService>();
+        await adminSvc.SeedDefaultAdminIfEmptyAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[Startup] SeedDefaultAdmin failed: {ex}");
+    }
+}
 
 app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
 {
     ctx.Response.StatusCode  = 500;
     ctx.Response.ContentType = "application/json";
-    var feature = ctx.Features.Get<IExceptionHandlerFeature>();
-    var msg     = app.Environment.IsDevelopment() && feature != null
-        ? feature.Error.Message
-        : "Internal server error.";
+    var msg = "Internal server error.";
     await ctx.Response.WriteAsync($"{{\"error\":\"{msg}\"}}");
 }));
 

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using OptiLoad.API.DTOs;
 using OptiLoad.Core.Application.Algorithms;
@@ -12,6 +13,7 @@ using CoreLoadingFace = OptiLoad.Core.Application.Algorithms.LoadingFace;
 
 namespace OptiLoad.API.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class VisualizationController : ControllerBase
@@ -241,7 +243,7 @@ var boxQtyByBoxId = new Dictionary<int, int>();
         foreach (var (bid, qty) in boxQtyByBoxId)
             await _db.AddBoxToJob(jobId, bid, qty);
 
-double timeLimit = request.TimeLimitSeconds > 0 ? request.TimeLimitSeconds : 10.0;
+double timeLimit = Math.Clamp(request.TimeLimitSeconds > 0 ? request.TimeLimitSeconds : 10.0, 1.0, 300.0);
         var result = await _packing.RunPackingJobWithTimeLimit(jobId, timeLimit);
 
         var loadingFace = Enum.TryParse<CoreLoadingFace>(request.LoadingFace, true, out var lf)

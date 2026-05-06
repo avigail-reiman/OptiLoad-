@@ -9,7 +9,7 @@ using OptiLoad.Core.Services;
 namespace OptiLoad.Data
 {
 
-    public class DatabaseService : IPackingRepository
+    public class DatabaseService : IPackingRepository, IAdminRepository
     {
         private readonly string _connectionString;
 
@@ -613,6 +613,49 @@ using var check = new SqlCommand(
             ins.Parameters.AddWithValue("@MW",   dims.MaxWeightKg);
             ins.Parameters.AddWithValue("@Cat",  DateTime.UtcNow);
             return Convert.ToInt32(await ins.ExecuteScalarAsync());
+        }
+
+        public async Task<Admin?> GetAdminByUsername(string username)
+        {
+            using var conn = new SqlConnection(_connectionString);
+            using var cmd  = new SqlCommand(
+                "SELECT Id, Username, PasswordHash, PasswordSalt FROM Admin WHERE Username = @Username", conn)
+            { CommandType = CommandType.Text };
+            cmd.Parameters.AddWithValue("@Username", username);
+            await conn.OpenAsync();
+            using var rdr = await cmd.ExecuteReaderAsync();
+            if (!await rdr.ReadAsync()) return null;
+            return new Admin
+            {
+                Id           = rdr.GetInt32(0),
+                Username     = rdr.GetString(1),
+                PasswordHash = rdr.GetString(2),
+                PasswordSalt = rdr.GetString(3)
+            };
+        }
+
+        public async Task<bool> AdminsExist()
+        {
+            using var conn = new SqlConnection(_connectionString);
+            using var cmd  = new SqlCommand("SELECT COUNT(1) FROM Admin", conn)
+            { CommandType = CommandType.Text };
+            await conn.OpenAsync();
+            return Convert.ToInt32(await cmd.ExecuteScalarAsync()) > 0;
+        }
+
+        public async Task CreateAdmin(string username, string passwordHash, string passwordSalt)
+        {
+            using var conn = new SqlConnection(_connectionString);
+            using var cmd  = new SqlCommand(
+                "INSERT INTO Admin (Username, PasswordHash, PasswordSalt, CreatedAt) " +
+                "VALUES (@Username, @Hash, @Salt, @CreatedAt)", conn)
+            { CommandType = CommandType.Text };
+            cmd.Parameters.AddWithValue("@Username",  username);
+            cmd.Parameters.AddWithValue("@Hash",      passwordHash);
+            cmd.Parameters.AddWithValue("@Salt",      passwordSalt);
+            cmd.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
+            await conn.OpenAsync();
+            await cmd.ExecuteNonQueryAsync();
         }
     }
 }
