@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -9,17 +9,7 @@ using OptiLoad.Core.Models;
 
 namespace OptiLoad.Core.Services
 {
-    /// <summary>
-    /// שירות תזמור – מתאם בין כל רכיבי המערכת.
-    ///
-    /// כל ריצה שלמה עוברת דרך קובץ זה:
-    ///   1. GetContainerDimensions ← DB
-    ///   2. GetJobBoxInstances     ← DB
-    ///   3. BranchAndBoundSolver   ← חישוב
-    ///   4. SavePlacementResults   ← DB
-    ///   5. CompleteJob            ← DB
-    ///   6. PrintReport            ← קונסולה
-    /// </summary>
+
     public class PackingService
     {
         private readonly IPackingRepository? _db;
@@ -29,31 +19,21 @@ namespace OptiLoad.Core.Services
             _db = db;
         }
 
-        // ─────────────────────────────────────────────────────────────────
-        // מצב DB: קרא מ-DB, חשב, שמור ל-DB
-        // ─────────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// ריצה מלאה עם גישה למסד הנתונים.
-        /// </summary>
-        public async Task<PackingResult> RunPackingJob(int jobId)
+public async Task<PackingResult> RunPackingJob(int jobId)
         {
             if (_db == null)
                 throw new InvalidOperationException("DatabaseService לא מוגדר.");
 
-            // ── שלב 1: שלוף נתונים ──
-            var container = await _db.GetContainerDimensions(jobId);
+var container = await _db.GetContainerDimensions(jobId);
             var instances = await _db.GetJobBoxInstances(jobId);
 
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] משימה {jobId}: " +
                               $"{instances.Count} ארגזים, {container}");
 
-            // ── שלב 2: הרץ אלגוריתם ──
-            var solver = new BranchAndBoundSolver(container);
+var solver = new BranchAndBoundSolver(container);
             var result = solver.Solve(instances);
 
-            // ── שלב 3: שמור תוצאות ──
-            try
+try
             {
                 await _db.SavePlacementResults(jobId, result);
                 await _db.CompleteJob(jobId, result);
@@ -64,15 +44,11 @@ namespace OptiLoad.Core.Services
                 throw;
             }
 
-            // ── שלב 4: הדפס דו"ח ──
-            PrintReport(result, container);
+PrintReport(result, container);
 
             return result;
         }
 
-        /// <summary>
-        /// ריצה עם מגבלת זמן — B&B רץ על thread נפרד ומשחרר את thread ה-HTTP.
-        /// </summary>
         public async Task<PackingResult> RunPackingJobWithTimeLimit(int jobId, double timeLimitSeconds)
         {
             if (_db == null)
@@ -86,8 +62,7 @@ namespace OptiLoad.Core.Services
                 TimeLimitSeconds = timeLimitSeconds
             };
 
-            // B&B רץ על thread של ThreadPool — לא חוסם thread של ASP.NET
-            var result = await Task.Run(() => solver.Solve(instances));
+var result = await Task.Run(() => solver.Solve(instances));
 
             try
             {
@@ -103,15 +78,7 @@ namespace OptiLoad.Core.Services
             return result;
         }
 
-
-        // ─────────────────────────────────────────────────────────────────
-        // מצב In-Memory: ללא DB (לבדיקות ולהדגמה)
-        // ─────────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// ריצה ללא מסד נתונים – מקבלת נתונים ישירות כ-objects.
-        /// </summary>
-        public PackingResult RunPackingJobInMemory(
+public PackingResult RunPackingJobInMemory(
             ContainerDimensions      container,
             IEnumerable<BoxInstance> instances,
             double                   timeLimitSeconds = 300.0)
@@ -132,14 +99,7 @@ namespace OptiLoad.Core.Services
             return result;
         }
 
-        // ─────────────────────────────────────────────────────────────────
-        // הדפסת דו"ח לקונסולה
-        // ─────────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// מדפיס דו"ח מסכם לקונסולה + JSON מיקומים.
-        /// </summary>
-        public static void PrintReport(PackingResult result, ContainerDimensions container)
+public static void PrintReport(PackingResult result, ContainerDimensions container)
         {
             Console.WriteLine();
             Console.WriteLine("═══════════════════════════════════════════════════");
@@ -154,8 +114,7 @@ namespace OptiLoad.Core.Services
             Console.WriteLine($"  סטטוס:             {result.StatusMessage}");
             Console.WriteLine("───────────────────────────────────────────────────");
 
-            // JSON מיקומים
-            var jsonOutput = result.PlacedBoxes.Select(pb => new PlacementJsonDto
+var jsonOutput = result.PlacedBoxes.Select(pb => new PlacementJsonDto
             {
                 Box      = pb.Instance.InstanceId,
                 X        = Math.Round(pb.X1, 4),
@@ -190,14 +149,7 @@ namespace OptiLoad.Core.Services
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // DTO לפלט JSON
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// מבנה פלט JSON – מיקום מדויק לכל ארגז.
-    /// </summary>
-    public class PlacementJsonDto
+public class PlacementJsonDto
     {
         [JsonPropertyName("box")]
         public string Box  { get; set; } = string.Empty;

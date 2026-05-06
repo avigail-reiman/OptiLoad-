@@ -1,10 +1,8 @@
-using System;
+﻿using System;
 
 namespace OptiLoad.Core.Models
 {
-    /// <summary>
-    /// תבנית מכולה – מידות ומשקל מקסימלי (טבלה: ContainerTemplate)
-    /// </summary>
+
     public class ContainerTemplate
     {
         public int      TemplateId   { get; set; }

@@ -1,10 +1,8 @@
-using System;
+﻿using System;
 
 namespace OptiLoad.Core.Models
 {
-    /// <summary>
-    /// תוצאת שיבוץ – מיקום מדויק לכל ארגז (טבלה: PlacementResult)
-    /// </summary>
+
     public class PlacementResult
     {
         public int      PlacementId   { get; set; }
@@ -21,12 +19,10 @@ namespace OptiLoad.Core.Models
         public int      RotationIndex { get; set; }
         public DateTime CreatedAt     { get; set; }
 
-        // שדות מועשרים (מ-JOIN עם Box)
-        public string BoxName  { get; set; } = string.Empty;
+public string BoxName  { get; set; } = string.Empty;
         public bool   IsFragile { get; set; }
 
-        // ניווט
-        public PackingJob? Job { get; set; }
+public PackingJob? Job { get; set; }
         public Box?        Box { get; set; }
 
         public override string ToString() =>

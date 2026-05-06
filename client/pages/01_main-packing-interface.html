@@ -174,10 +174,18 @@ td input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:#58a6
     <button class="btn-add" id="btn-add-row" type="button">＋ הוסף סוג ארגז</button>
   </div>
 
-  <!-- Time limit -->
-  <div style="margin-top:6px">
+  <!-- Time limit + Loading face -->
+  <div style="margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:7px">
     <label class="lbl"><span>⏱ מגבלת זמן (שניות)</span>
       <input type="number" id="time-limit" value="10" min="1" max="300">
+    </label>
+    <label class="lbl"><span>🚶 פאת טעינה</span>
+      <select id="loading-face" style="background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:5px 7px;font-size:12px;width:100%;outline:none">
+        <option value="Front">קדמי (Z=0)</option>
+        <option value="Back">אחורי (Z=סוף)</option>
+        <option value="Left">שמאלי (X=0)</option>
+        <option value="Right">ימני (X=סוף)</option>
+      </select>
     </label>
   </div>
 
@@ -591,6 +599,7 @@ async function runPacking(mode) {
       maxWeightKg: +document.getElementById('cmw').value
     },
     timeLimitSeconds: +(document.getElementById('time-limit').value) || 10,
+    loadingFace:       document.getElementById('loading-face').value,
     boxes: getBoxRows()
   };
 
@@ -606,7 +615,14 @@ async function runPacking(mode) {
 
     if (mode === 'step') {
       // ── מצב שלב-בשלב ──────────────────────────────────────────
-      stepData      = data.placedBoxes || [];
+      stepData      = (data.placedBoxes || []).slice().sort((a, b) =>
+        (a.loadingStep ?? 0) - (b.loadingStep ?? 0));
+      console.table(stepData.map(b => ({
+        step: b.loadingStep, name: b.name,
+        y1: +b.y1.toFixed(1), y2: +b.y2.toFixed(1),
+        z1: +b.z1.toFixed(1), z2: +b.z2.toFixed(1),
+        x1: +b.x1.toFixed(1), x2: +b.x2.toFixed(1)
+      })));
       stepIndex     = -1;
       stepMeshPairs = [];
 

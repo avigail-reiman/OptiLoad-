@@ -1,11 +1,8 @@
-using OptiLoad.Core.Models;
+﻿using OptiLoad.Core.Models;
 
 namespace OptiLoad.Core.Services
 {
-    /// <summary>
-    /// ממשק גישה לנתונים – Core לא תלוי ב-Data, רק בממשק זה.
-    /// DatabaseService ב-OptiLoad.Data מממש ממשק זה.
-    /// </summary>
+
     public interface IPackingRepository
     {
         Task<ContainerDimensions> GetContainerDimensions(int jobId);

@@ -5,9 +5,7 @@ using OptiLoad.Data;
 
 namespace OptiLoad.API.Controllers
 {
-    /// <summary>
-    /// ניהול משימות שיבוץ – יצירה, הרצה, שליפת תוצאות
-    /// </summary>
+
     [ApiController]
     [Route("api/[controller]")]
     public class PackingJobController : ControllerBase
@@ -21,7 +19,6 @@ namespace OptiLoad.API.Controllers
             _packingService = packingService;
         }
 
-        /// <summary>שליפת כל המשימות</summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<PackingJob>>> GetAll()
         {
@@ -29,7 +26,6 @@ namespace OptiLoad.API.Controllers
             return Ok(jobs);
         }
 
-        /// <summary>שליפת משימה לפי מזהה</summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<PackingJob>> GetById(int id)
         {
@@ -38,7 +34,6 @@ namespace OptiLoad.API.Controllers
             return Ok(job);
         }
 
-        /// <summary>יצירת משימה חדשה</summary>
         [HttpPost]
         public async Task<ActionResult<int>> Create([FromBody] CreateJobRequest request)
         {
@@ -48,7 +43,6 @@ namespace OptiLoad.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = jobId }, jobId);
         }
 
-        /// <summary>הרצת אלגוריתם שיבוץ עבור משימה קיימת</summary>
         [HttpPost("{id}/run")]
         public async Task<ActionResult<PackingResult>> Run(int id)
         {
@@ -56,7 +50,6 @@ namespace OptiLoad.API.Controllers
             return Ok(result);
         }
 
-        /// <summary>שליפת תוצאות שיבוץ עבור משימה</summary>
         [HttpGet("{id}/placements")]
         public async Task<ActionResult<IEnumerable<PlacementResult>>> GetPlacements(int id)
         {
@@ -64,7 +57,6 @@ namespace OptiLoad.API.Controllers
             return Ok(placements);
         }
 
-        /// <summary>מחיקת משימה (כולל תוצאות שיבוץ)</summary>
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -74,10 +66,6 @@ namespace OptiLoad.API.Controllers
             return NoContent();
         }
 
-        /// <summary>
-        /// הדגמה בלי DB – מריץ אלגוריתם In-Memory ומחזיר מיקומי ארגזים מיידית.
-        /// אין צורך במסד נתונים!
-        /// </summary>
                         [HttpPost("demo")]
         public ActionResult<PackingResult> RunDemo()
         {
@@ -88,34 +76,34 @@ namespace OptiLoad.API.Controllers
 
             var boxes = new List<Box>
             {
-                // זעירים (20-40 ס"מ)
+                
                 new() { BoxId=1,  BoxName="TINY-A",     Width=20,  Height=20,  Depth=20,  WeightKg=1,  AllowRotation=true  },
                 new() { BoxId=2,  BoxName="TINY-B",     Width=30,  Height=20,  Depth=25,  WeightKg=2,  AllowRotation=true  },
-                // קטנים (40-80 ס"מ)
+                
                 new() { BoxId=3,  BoxName="SMALL-A",    Width=40,  Height=40,  Depth=40,  WeightKg=4,  AllowRotation=true  },
                 new() { BoxId=4,  BoxName="SMALL-B",    Width=60,  Height=50,  Depth=55,  WeightKg=7,  AllowRotation=true  },
                 new() { BoxId=5,  BoxName="SMALL-C",    Width=70,  Height=40,  Depth=60,  WeightKg=8,  AllowRotation=true  },
-                // בינוניים (80-150 ס"מ)
+                
                 new() { BoxId=6,  BoxName="MED-A",      Width=80,  Height=80,  Depth=80,  WeightKg=15, AllowRotation=true  },
                 new() { BoxId=7,  BoxName="MED-B",      Width=100, Height=90,  Depth=100, WeightKg=20, AllowRotation=true  },
                 new() { BoxId=8,  BoxName="MED-TALL",   Width=90,  Height=150, Depth=90,  WeightKg=22, AllowRotation=true  },
                 new() { BoxId=9,  BoxName="MED-WIDE",   Width=140, Height=80,  Depth=100, WeightKg=18, AllowRotation=true  },
-                // גדולים (150-250 ס"מ)
+                
                 new() { BoxId=10, BoxName="LARGE-A",    Width=150, Height=100, Depth=120, WeightKg=35, AllowRotation=true  },
                 new() { BoxId=11, BoxName="LARGE-B",    Width=200, Height=120, Depth=150, WeightKg=50, AllowRotation=true  },
                 new() { BoxId=12, BoxName="LARGE-FLAT", Width=230, Height=60,  Depth=180, WeightKg=40, AllowRotation=true  },
-                // שבירים
+                
                 new() { BoxId=13, BoxName="FRAGILE-S",  Width=50,  Height=40,  Depth=50,  WeightKg=3,  IsFragile=true, AllowRotation=false },
                 new() { BoxId=14, BoxName="FRAGILE-M",  Width=90,  Height=70,  Depth=90,  WeightKg=10, IsFragile=true, AllowRotation=false },
             };
 
             var quantities = new Dictionary<int,int>
             {
-                {1,10},{2,8},                  // זעירים
-                {3,7},{4,6},{5,5},             // קטנים
-                {6,4},{7,3},{8,2},{9,3},       // בינוניים
-                {10,2},{11,2},{12,1},           // גדולים
-                {13,3},{14,2}                   // שבירים
+                {1,10},{2,8},                  
+                {3,7},{4,6},{5,5},             
+                {6,4},{7,3},{8,2},{9,3},       
+                {10,2},{11,2},{12,1},           
+                {13,3},{14,2}                   
             };
 
             var instances = new List<BoxInstance>();

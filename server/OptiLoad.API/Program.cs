@@ -11,14 +11,12 @@ builder.Services.AddControllers();
 builder.Services.AddResponseCompression(opts => opts.EnableForHttps = true);
 builder.Services.AddMemoryCache();
 
-// Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "OptiLoad API", Version = "v1" });
 });
 
-// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DevFrontend", policy =>
@@ -27,16 +25,14 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod());
 });
 
-// Dependency Injection
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
 builder.Services.AddSingleton<DatabaseService>(new DatabaseService(connectionString));
 builder.Services.AddSingleton<IPackingRepository>(sp => sp.GetRequiredService<DatabaseService>());
 builder.Services.AddScoped<PackingService>(sp =>
     new PackingService(sp.GetRequiredService<IPackingRepository>()));
 
-// Admin authentication and JWT
 builder.Services.AddScoped<IAdminService, AdminService>();
-var jwtKey = "SuperSecretKeyForJwtSignature123!"; // move to config
+var jwtKey = "SuperSecretKeyForJwtSignature123!"; 
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -53,18 +49,11 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// --- הרצת מבחן אוטומטית על נתוני דוגמה ---
-// await OptiLoad.Core.Services.TestDataRunner.RunFromJson("../OptiLoad.Core/TestData/SampleTestData.json");
-// Environment.Exit(0);
-// --- סוף הרצת מבחן ---
-
 var app = builder.Build();
-
 
 app.UseResponseCompression();
 app.UseAuthentication();
 
-// Global exception handler
 app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
 {
     ctx.Response.StatusCode  = 500;
@@ -76,7 +65,6 @@ app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
     await ctx.Response.WriteAsync($"{{\"error\":\"{msg}\"}}");
 }));
 
-// הגשת קבצי client מתיקיית client/ שנמצאת שתי רמות מעל ה-API
 var clientPath = Path.GetFullPath(Path.Combine(
     builder.Environment.ContentRootPath, "..", "..", "client"));
 

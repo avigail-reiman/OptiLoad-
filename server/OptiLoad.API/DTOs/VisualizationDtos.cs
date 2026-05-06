@@ -27,6 +27,6 @@ public class VisualizationRunRequest
     [Required] public VisualizationContainerConfig  Container        { get; set; } = new();
     [Required][MinLength(1)] public List<VisualizationBoxConfig> Boxes { get; set; } = new();
     [Range(1, 300)]          public double                        TimeLimitSeconds { get; set; } = 10.0;
-    /// <summary>גובה מילוי מקסימלי (ס"מ). אם null — גובה מלא של המכולה.</summary>
     [Range(1, 10000)]        public double?                       MaxFillHeight    { get; set; }
+    public string                                                  LoadingFace      { get; set; } = "Front";
 }

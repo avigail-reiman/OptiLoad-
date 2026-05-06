@@ -1,12 +1,14 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using OptiLoad.API.DTOs;
+using OptiLoad.Core.Application.Algorithms;
 using OptiLoad.Core.Models;
 using OptiLoad.Core.Services;
 using OptiLoad.Data;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using CoreLoadingFace = OptiLoad.Core.Application.Algorithms.LoadingFace;
 
 namespace OptiLoad.API.Controllers;
 
@@ -25,9 +27,7 @@ public class VisualizationController : ControllerBase
         _cache   = cache;
     }
 
-    // ─── הצגת ריצה קיימת מה-DB ────────────────────────────────────────
-    /// <summary>GET /api/Visualization/3d/{jobId} — מציג תוצאות משימה שמורה מה-DB</summary>
-    [HttpGet("3d/{jobId:int}")]
+[HttpGet("3d/{jobId:int}")]
     [Produces("text/html")]
     public async Task<ContentResult> ViewJobFromDb(int jobId)
     {
@@ -62,34 +62,30 @@ public class VisualizationController : ControllerBase
             source            = "DB"
         });
 
-        return Content(HtmlTemplate.Replace("/**DATA**/", json), "text/html; charset=utf-8");
+        return Content(HtmlTemplate.Replace("", json), "text/html; charset=utf-8");
     }
 
-    // ─── הרצה מה-DB: זרע + הרץ + הצג ────────────────────────────────
-    /// <summary>GET /api/Visualization/run — ארגזים מציאותיים למכולה 20ft, שומר ל-DB, מריץ אלגוריתם</summary>
-    [HttpGet("run")]
+[HttpGet("run")]
     [Produces("text/html")]
     public async Task<ContentResult> RunAndVisualize()
     {
-        // ── ארגזים מציאותיים למכולה 20ft (589×239×235 ס"מ) ──
-        // (שם, W, H, D, kg, שביר, סיבוב, כמות)
-        var boxDefs = new[]
+
+var boxDefs = new[]
         {
-            // name              W      H      D      kg     frag   rot    qty
-            ("PALLET-LG",    120.0, 144.0,  80.0, 500.0, false, false,  2),  // משטח גדול
-            ("PALLET-SM",     80.0, 120.0,  60.0, 250.0, false, false,  3),  // משטח קטן
-            ("CRATE-LG",     100.0, 100.0, 100.0, 400.0, false, true,   2),  // ארגז עץ גדול
-            ("CRATE-SM",      60.0,  80.0,  60.0, 150.0, false, true,   4),  // ארגז עץ קטן
-            ("CARTON-LG",     80.0,  70.0,  60.0,  40.0, false, true,   5),  // קרטון גדול
-            ("CARTON-MED",    50.0,  50.0,  50.0,  20.0, false, true,   6),  // קרטון בינוני
-            ("CARTON-SM",     40.0,  30.0,  30.0,   8.0, false, true,   8),  // קרטון קטן
-            ("DRUM",          60.0,  90.0,  60.0, 200.0, false, false,  3),  // חבית תעשייתית
-            ("ELEC-BOX",      60.0,  50.0,  60.0,  20.0, true,  false,  3),  // אלקטרוניקה (שביר)
-            ("GLASS-PANEL",  180.0,  10.0, 120.0,  30.0, true,  false,  1),  // לוח זכוכית (שביר)
+            
+            ("PALLET-LG",    120.0, 144.0,  80.0, 500.0, false, false,  2),  
+            ("PALLET-SM",     80.0, 120.0,  60.0, 250.0, false, false,  3),  
+            ("CRATE-LG",     100.0, 100.0, 100.0, 400.0, false, true,   2),  
+            ("CRATE-SM",      60.0,  80.0,  60.0, 150.0, false, true,   4),  
+            ("CARTON-LG",     80.0,  70.0,  60.0,  40.0, false, true,   5),  
+            ("CARTON-MED",    50.0,  50.0,  50.0,  20.0, false, true,   6),  
+            ("CARTON-SM",     40.0,  30.0,  30.0,   8.0, false, true,   8),  
+            ("DRUM",          60.0,  90.0,  60.0, 200.0, false, false,  3),  
+            ("ELEC-BOX",      60.0,  50.0,  60.0,  20.0, true,  false,  3),  
+            ("GLASS-PANEL",  180.0,  10.0, 120.0,  30.0, true,  false,  1),  
         };
 
-        // שמור ארגזים ל-DB
-        var boxIds = new List<(int id, int qty)>();
+var boxIds = new List<(int id, int qty)>();
         foreach (var (name, w, h, d, kg, fragile, rot, qty) in boxDefs)
         {
             int bid = await _db.CreateBox(new Box
@@ -104,27 +100,22 @@ public class VisualizationController : ControllerBase
             boxIds.Add((bid, qty));
         }
 
-        // צור מכולה
-        int containerId = await _db.CreateContainer(1, $"VIS-{DateTime.UtcNow:yyyyMMdd-HHmmss}");
+int containerId = await _db.CreateContainer(1, $"VIS-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}");
 
-        // צור משימה
-        int jobId = await _db.CreatePackingJob(containerId);
+int jobId = await _db.CreatePackingJob(containerId);
         foreach (var (bid, qty) in boxIds)
             await _db.AddBoxToJob(jobId, bid, qty);
 
-        // הרץ אלגוריתם (8 שניות מגבלה)
-        var result = await _packing.RunPackingJobWithTimeLimit(jobId, 8.0);
+var result = await _packing.RunPackingJobWithTimeLimit(jobId, 8.0);
 
-        // הפנה לויזואליזציה מה-DB
-        return await ViewJobFromDb(jobId);
+return await ViewJobFromDb(jobId);
     }
 
-    // ─── Demo in-memory (ללא DB) ────────────────────────────────────────
-    [HttpGet("3d")]
+[HttpGet("3d")]
     [Produces("text/html")]
     public ContentResult View3D()
     {
-        // --- אותם נתוני demo ---
+        
         var container = new ContainerDimensions
         {
             Width = 589.0, Height = 239.0, Depth = 235.0, MaxWeightKg = 21770.0
@@ -164,18 +155,19 @@ public class VisualizationController : ControllerBase
         var service = new PackingService();
         var result  = service.RunPackingJobInMemory(container, instances);
 
-        // --- סריאליזציה לJSON ---
-        var json = JsonSerializer.Serialize(new
+var json = JsonSerializer.Serialize(new
         {
-            placedBoxes = result.PlacedBoxes.Select(pb => new
-            {
-                name      = pb.Instance.BoxDefinition.BoxName,
-                id        = pb.Instance.InstanceId,
-                binIndex  = pb.BinIndex,
-                x1 = pb.X1, y1 = pb.Y1, z1 = pb.Z1,
-                x2 = pb.X2, y2 = pb.Y2, z2 = pb.Z2,
-                isFragile = pb.Instance.BoxDefinition.IsFragile
-            }),
+            placedBoxes = LoadingSequencer.Sequence(result.PlacedBoxes)
+                .Select(t => new
+                {
+                    name         = t.Box.Instance.BoxDefinition.BoxName,
+                    id           = t.Box.Instance.InstanceId,
+                    binIndex     = t.Box.BinIndex,
+                    x1 = t.Box.X1, y1 = t.Box.Y1, z1 = t.Box.Z1,
+                    x2 = t.Box.X2, y2 = t.Box.Y2, z2 = t.Box.Z2,
+                    isFragile    = t.Box.Instance.BoxDefinition.IsFragile,
+                    loadingStep  = t.LoadingStep
+                }),
             binsUsed          = result.BinsUsed,
             volumeUtilization = result.VolumeUtilization,
             wastedSpacePercent = (1.0 - result.VolumeUtilization) * 100.0,
@@ -191,23 +183,14 @@ public class VisualizationController : ControllerBase
             isOptimal         = result.IsOptimal
         });
 
-        var html = HtmlTemplate.Replace("/**DATA**/", json);
+        var html = HtmlTemplate.Replace("", json);
         return Content(html, "text/html; charset=utf-8");
     }
 
-    // ─── POST /api/visualization/run — שמירה ל-DB + הרצה + החזרת JSON ──────
-    /// <summary>
-    /// מקבל מכולה + ארגזים מה-frontend:
-    ///   1. מכניס / מעדכן כל ארגז ב-DB (upsert לפי שם)
-    ///   2. מוצא / יוצר תבנית מכולה מתאימה ב-DB
-    ///   3. יוצר מכולה ומשימת שיבוץ חדשה ב-DB
-    ///   4. מריץ אלגוריתם ושומר תוצאות ב-DB
-    ///   5. מחזיר JSON לתצוגת Three.js
-    /// </summary>
-    [HttpPost("run")]
+[HttpPost("run")]
     public async Task<ActionResult> RunPacking([FromBody] VisualizationRunRequest request)
     {
-        // Cache key based on request content hash
+        
         var cacheKey = "packing_" + Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request))));
         if (_cache.TryGetValue(cacheKey, out object? cached))
@@ -223,8 +206,7 @@ public class VisualizationController : ControllerBase
             MaxWeightKg = request.Container.MaxWeightKg
         };
 
-        // ── שלב 1: upsert ארגזים ל-DB ──────────────────────────────────
-        var boxIdMap = new Dictionary<string, int>(); // name → BoxId
+var boxIdMap = new Dictionary<string, int>(); 
         foreach (var bc in request.Boxes)
         {
             var box = new Box
@@ -240,16 +222,13 @@ public class VisualizationController : ControllerBase
             boxIdMap[box.BoxName] = await _db.UpsertBox(box);
         }
 
-        // ── שלב 2: מצא / צור תבנית מכולה ──────────────────────────────
-        int templateId = await _db.UpsertContainerTemplate(container);
+int templateId = await _db.UpsertContainerTemplate(container);
 
-        // ── שלב 3: צור מכולה ומשימה ────────────────────────────────────
-        int containerId = await _db.CreateContainer(templateId,
-            $"VIS-{DateTime.UtcNow:yyyyMMdd-HHmmss}");
+int containerId = await _db.CreateContainer(templateId,
+            $"VIS-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}");
         int jobId = await _db.CreatePackingJob(containerId);
 
-        // הוסף ארגזים למשימה (עם כמויות) — קבץ לפי BoxId כדי למנוע duplicate key
-        var boxQtyByBoxId = new Dictionary<int, int>();
+var boxQtyByBoxId = new Dictionary<int, int>();
         foreach (var bc in request.Boxes)
         {
             var name = string.IsNullOrWhiteSpace(bc.Name) ? $"Box_{bc.W}x{bc.H}x{bc.D}" : bc.Name;
@@ -262,26 +241,30 @@ public class VisualizationController : ControllerBase
         foreach (var (bid, qty) in boxQtyByBoxId)
             await _db.AddBoxToJob(jobId, bid, qty);
 
-        // ── שלב 4: הרץ אלגוריתם עם מגבלת זמן ─────────────────────────
-        double timeLimit = request.TimeLimitSeconds > 0 ? request.TimeLimitSeconds : 10.0;
+double timeLimit = request.TimeLimitSeconds > 0 ? request.TimeLimitSeconds : 10.0;
         var result = await _packing.RunPackingJobWithTimeLimit(jobId, timeLimit);
 
-        // ── שלב 5: בנה תגובת JSON לתצוגה ──────────────────────────────
+        var loadingFace = Enum.TryParse<CoreLoadingFace>(request.LoadingFace, true, out var lf)
+            ? lf : CoreLoadingFace.Front;
+
         var response = new
         {
             jobId             = jobId,
             containerW        = container.Width,
             containerH        = container.Height,
             containerD        = container.Depth,
-            placedBoxes       = result.PlacedBoxes.Select(pb => new
-            {
-                name      = pb.Instance.BoxDefinition.BoxName,
-                id        = pb.Instance.InstanceId,
-                binIndex  = pb.BinIndex,
-                x1 = pb.X1, y1 = pb.Y1, z1 = pb.Z1,
-                x2 = pb.X2, y2 = pb.Y2, z2 = pb.Z2,
-                isFragile = pb.Instance.BoxDefinition.IsFragile
-            }),
+            loadingFace       = loadingFace.ToString(),
+            placedBoxes = LoadingSequencer.Sequence(result.PlacedBoxes, loadingFace)
+                .Select(t => new
+                {
+                    name         = t.Box.Instance.BoxDefinition.BoxName,
+                    id           = t.Box.Instance.InstanceId,
+                    binIndex     = t.Box.BinIndex,
+                    x1 = t.Box.X1, y1 = t.Box.Y1, z1 = t.Box.Z1,
+                    x2 = t.Box.X2, y2 = t.Box.Y2, z2 = t.Box.Z2,
+                    isFragile    = t.Box.Instance.BoxDefinition.IsFragile,
+                    loadingStep  = t.LoadingStep
+                }),
             unplacedBoxes     = result.UnplacedBoxes
                 .GroupBy(b => b.BoxDefinition.BoxName)
                 .Select(g => new { name = g.Key, count = g.Count() })
@@ -304,13 +287,12 @@ public class VisualizationController : ControllerBase
         return Ok(response);
     }
 
-    // ─── Helper: per-bin stats from DB placements ────────────────────────
-    private static object BuildPerBinStatsFromPlacements(
+private static object BuildPerBinStatsFromPlacements(
         IEnumerable<PlacementResult> placements, int binsUsed, double utilization)
     {
         var list = placements.ToList();
         double totalBoxVol = list.Sum(p => p.PlacedWidth * p.PlacedHeight * p.PlacedDepth);
-        // containerVol per bin = totalBoxVol / (binsUsed * utilization)
+        
         double containerVol = (binsUsed > 0 && utilization > 0)
             ? totalBoxVol / (binsUsed * utilization)
             : totalBoxVol;
@@ -323,8 +305,7 @@ public class VisualizationController : ControllerBase
         }).ToList();
     }
 
-    // ─── HTML + Three.js template ────────────────────────────────────────
-    private const string HtmlTemplate = """
+private const string HtmlTemplate = """
         <!DOCTYPE html>
         <html lang="he">
         <head>
@@ -376,7 +357,7 @@ public class VisualizationController : ControllerBase
         <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
         <script>
-        const R = /**DATA**/;
+        const R = ;
         const CW=589, CH=239, CD=235, GAP=120;
         const PAL=[0x4c9be8,0x56d364,0xe3b341,0xd2a8ff,0x79c0ff,0xffa657,
                    0xf78166,0xadd7f6,0xb8bb26,0x83a598,0xfe8019,0x8ec07c,0xa9b665];
@@ -399,7 +380,6 @@ public class VisualizationController : ControllerBase
         controls.enableDamping=true; controls.dampingFactor=0.07;
         controls.minDistance=200; controls.maxDistance=9000;
 
-        // תאורה
         scene.add(new THREE.AmbientLight(0xffffff,0.6));
         const dl=new THREE.DirectionalLight(0xffffff,0.75);
         dl.position.set(1200,1800,900); dl.castShadow=true;
@@ -409,12 +389,10 @@ public class VisualizationController : ControllerBase
         dl.shadow.mapSize.set(2048,2048); scene.add(dl);
         scene.add(new THREE.HemisphereLight(0x3a6fcc,0x001a0d,0.35));
 
-        // רצפה
         const totalW=R.binsUsed*(CW+GAP)-GAP;
         const grid=new THREE.GridHelper(Math.max(totalW*1.6,2000),60,0x161b22,0x21262d);
         grid.position.set(totalW/2,-0.5,CD/2); scene.add(grid);
 
-        // מסגרת מכולה
         function addBin(ox,bi){
           const col=new THREE.Color(bi===0?0x58a6ff:0x3fb950);
           const geo=new THREE.BoxGeometry(CW,CH,CD);
@@ -423,7 +401,7 @@ public class VisualizationController : ControllerBase
             new THREE.LineBasicMaterial({color:col,transparent:true,opacity:.75})
           );
           ls.position.set(ox+CW/2,CH/2,CD/2); scene.add(ls);
-          // רצפת המכולה
+          
           const fp=new THREE.Mesh(
             new THREE.PlaneGeometry(CW,CD),
             new THREE.MeshStandardMaterial({color:bi===0?0x0c1f35:0x0c2512,transparent:true,opacity:.35,roughness:1})
@@ -432,7 +410,6 @@ public class VisualizationController : ControllerBase
           fp.receiveShadow=true; scene.add(fp);
         }
 
-        // ארגזים
         const legSet={};
         R.placedBoxes.forEach(pb=>{
           const ox=(pb.binIndex||0)*(CW+GAP);
@@ -444,7 +421,7 @@ public class VisualizationController : ControllerBase
           );
           mesh.position.set(ox+pb.x1+bw/2, pb.y1+bh/2, pb.z1+bd/2);
           mesh.castShadow=true; mesh.receiveShadow=true; scene.add(mesh);
-          // קווי מסגרת על הארגז
+          
           const el=new THREE.LineSegments(
             new THREE.EdgesGeometry(mesh.geometry),
             new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.38})
@@ -455,19 +432,16 @@ public class VisualizationController : ControllerBase
 
         for(let b=0;b<R.binsUsed;b++) addBin(b*(CW+GAP),b);
 
-        // מצלמה
         controls.target.set(totalW/2,CH/2,CD/2);
         camera.position.set(totalW/2+200, CH*1.9, CD*3.4);
         controls.update();
 
-        // אגדה
         Object.entries(legSet).forEach(([n,{c,f}])=>{
           const h='#'+c.toString(16).padStart(6,'0');
           document.getElementById('li').insertAdjacentHTML('beforeend',
             '<div class="li"><div class="lc" style="background:'+h+'"></div>'+n+(f?' &#x1F538;':'')+'</div>');
         });
 
-        // סטטיסטיקות
         document.getElementById('sb').textContent = R.binsUsed;
         document.getElementById('sv').textContent = (R.volumeUtilization*100).toFixed(1)+'%';
         document.getElementById('sw').textContent = (R.wastedSpacePercent||((1-R.volumeUtilization)*100)).toFixed(1)+'%';
@@ -476,7 +450,6 @@ public class VisualizationController : ControllerBase
         document.getElementById('st').textContent = R.solveTime;
         document.getElementById('so').textContent = R.isOptimal ? 'כן ✓' : 'לא (היוריסטי)';
 
-        // פירוט מכולות
         if(R.perBinStats && R.perBinStats.length > 0){
           document.getElementById('binBreakdown').style.display='block';
           const rows=document.getElementById('binRows');
@@ -492,7 +465,6 @@ public class VisualizationController : ControllerBase
           });
         }
 
-        // אנימציה
         function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene,camera); }
         animate();
         window.addEventListener('resize',()=>{

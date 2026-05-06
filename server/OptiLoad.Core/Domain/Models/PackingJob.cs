@@ -1,10 +1,8 @@
-using System;
+﻿using System;
 
 namespace OptiLoad.Core.Models
 {
-    /// <summary>
-    /// משימת שיבוץ (טבלה: PackingJob)
-    /// </summary>
+
     public class PackingJob
     {
         public int        JobId             { get; set; }
@@ -19,8 +17,7 @@ namespace OptiLoad.Core.Models
         public DateTime   CreatedAt         { get; set; }
         public DateTime?  CompletedAt       { get; set; }
 
-        // ניווט
-        public Container? Container { get; set; }
+public Container? Container { get; set; }
 
         public override string ToString() =>
             $"Job[{JobId}] Status={Status}, Bins={BinsUsed}";

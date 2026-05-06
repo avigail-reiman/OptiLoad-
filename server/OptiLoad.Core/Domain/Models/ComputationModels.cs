@@ -1,17 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace OptiLoad.Core.Models
 {
-    // ─────────────────────────────────────────────────────────────────────────
-    // מודלים חישוביים – משמשים את האלגוריתמים בלבד (לא מיפוי ל-DB)
-    // ─────────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// ContainerDimensions – מכולה תקנית (כל המכולות זהות)
-    /// </summary>
-    public class ContainerDimensions
+public class ContainerDimensions
     {
         public double Width       { get; set; }
         public double Height      { get; set; }
@@ -24,9 +18,6 @@ namespace OptiLoad.Core.Models
             $"Container({Width}×{Height}×{Depth}, maxWeight={MaxWeightKg}kg)";
     }
 
-    /// <summary>
-    /// BoxInstance – מופע ארגז (כאשר יש כמה יחידות מאותו סוג)
-    /// </summary>
     public class BoxInstance
     {
         public Box BoxDefinition  { get; set; } = null!;
@@ -36,9 +27,6 @@ namespace OptiLoad.Core.Models
         public override string ToString() => InstanceId;
     }
 
-    /// <summary>
-    /// Rotation – כיוון ספציפי של ארגז (record struct לייעול זיכרון)
-    /// </summary>
     public readonly record struct Rotation(double W, double H, double D, int Index)
     {
         public double Volume => W * H * D;
@@ -46,17 +34,11 @@ namespace OptiLoad.Core.Models
         public override string ToString() => $"R{Index}({W}×{H}×{D})";
     }
 
-    /// <summary>
-    /// Position3D – נקודה בחלל (פינת שמאל-תחתית-אחורית של ארגז)
-    /// </summary>
     public readonly record struct Position3D(double X, double Y, double Z)
     {
         public override string ToString() => $"({X:F2}, {Y:F2}, {Z:F2})";
     }
 
-    /// <summary>
-    /// PlacedBox – ארגז שכבר שובץ עם מיקום וכיוון
-    /// </summary>
     public class PlacedBox
     {
         public BoxInstance Instance { get; }
@@ -92,9 +74,6 @@ namespace OptiLoad.Core.Models
             $"{Instance.InstanceId} @ {Position} rot={Rotation}";
     }
 
-    /// <summary>
-    /// PackingState – מצב חלקי בתהליך B&B
-    /// </summary>
     public class PackingState
     {
         private readonly List<PlacedBox> _placed = new();
@@ -125,9 +104,6 @@ namespace OptiLoad.Core.Models
         }
     }
 
-    /// <summary>
-    /// BinStats – ניצולת נפח לכל מכולה בנפרד
-    /// </summary>
     public class BinStats
     {
         public int    BinIndex           { get; set; }
@@ -137,9 +113,6 @@ namespace OptiLoad.Core.Models
         public double WastedPercent      => 100.0 - UtilizationPercent;
     }
 
-    /// <summary>
-    /// PackingResult – תוצאת ריצה מלאה
-    /// </summary>
     public class PackingResult
     {
         public List<PlacedBox>   PlacedBoxes       { get; set; } = new();

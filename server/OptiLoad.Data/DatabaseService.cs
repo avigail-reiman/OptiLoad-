@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using Microsoft.Data.SqlClient;
@@ -8,17 +8,7 @@ using OptiLoad.Core.Services;
 
 namespace OptiLoad.Data
 {
-    /// <summary>
-    /// שכבת גישה למסד הנתונים (Data Access Layer).
-    ///
-    /// כל הגישה מתבצעת דרך Stored Procedures בלבד – ללא ORM.
-    /// עובד עם ADO.NET ישיר עם SQL Server.
-    ///
-    /// עקרונות:
-    ///   ‣ כל שאילתה דרך Stored Procedure (אבטחה, ביצועים)
-    ///   ‣ שמירת תוצאות בטרנזקציה אחת (עקביות)
-    ///   ‣ שגיאות נרשמות ב-ErrorLog ולא גורמות לקריסה
-    /// </summary>
+
     public class DatabaseService : IPackingRepository
     {
         private readonly string _connectionString;
@@ -28,14 +18,7 @@ namespace OptiLoad.Data
             _connectionString = connectionString;
         }
 
-        // ─────────────────────────────────────────────────────────────────
-        // שליפת נתונים
-        // ─────────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// שולף מידות מכולה עבור משימה ספציפית (SP_GetContainerTemplate).
-        /// </summary>
-        public async Task<ContainerDimensions> GetContainerDimensions(int jobId)
+public async Task<ContainerDimensions> GetContainerDimensions(int jobId)
         {
             using var conn = new SqlConnection(_connectionString);
             using var cmd  = new SqlCommand("SP_GetContainerTemplate", conn)
@@ -59,9 +42,6 @@ namespace OptiLoad.Data
             };
         }
 
-        /// <summary>
-        /// שולף רשימת ארגזים למשימה, כולל כמויות, וממיר ל-BoxInstance (SP_GetJobBoxes).
-        /// </summary>
         public async Task<List<BoxInstance>> GetJobBoxInstances(int jobId)
         {
             using var conn = new SqlConnection(_connectionString);
@@ -105,15 +85,7 @@ namespace OptiLoad.Data
             return instances;
         }
 
-        // ─────────────────────────────────────────────────────────────────
-        // שמירת תוצאות
-        // ─────────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// שומר את כל מיקומי הארגזים בטרנזקציה אחת (SP_SavePlacementResults).
-        /// אם אחד נכשל – הכל נמחק (Rollback).
-        /// </summary>
-        public async Task SavePlacementResults(int jobId, PackingResult result)
+public async Task SavePlacementResults(int jobId, PackingResult result)
         {
             using var conn = new SqlConnection(_connectionString);
             await conn.OpenAsync();
@@ -160,9 +132,6 @@ namespace OptiLoad.Data
             }
         }
 
-        /// <summary>
-        /// מעדכנת סטטוס, ניצול נפח, משקל וזמן פתרון בסיום ריצה (SP_CompleteJob).
-        /// </summary>
         public async Task CompleteJob(int jobId, PackingResult result)
         {
             using var conn = new SqlConnection(_connectionString);
@@ -192,14 +161,7 @@ namespace OptiLoad.Data
             await cmd.ExecuteNonQueryAsync();
         }
 
-        // ─────────────────────────────────────────────────────────────────
-        // יצירת משימה
-        // ─────────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// יוצר משימת שיבוץ חדשה ומחזיר JobId (SP_CreatePackingJob).
-        /// </summary>
-        public async Task<int> CreatePackingJob(int containerId)
+public async Task<int> CreatePackingJob(int containerId)
         {
             using var conn = new SqlConnection(_connectionString);
             using var cmd  = new SqlCommand(
@@ -216,9 +178,6 @@ namespace OptiLoad.Data
             return Convert.ToInt32(await cmd.ExecuteScalarAsync());
         }
 
-        /// <summary>
-        /// מוסיף ארגז למשימה (SP_AddBoxesToJob).
-        /// </summary>
         public async Task AddBoxToJob(int jobId, int boxId, int quantity)
         {
             using var conn = new SqlConnection(_connectionString);
@@ -236,14 +195,7 @@ namespace OptiLoad.Data
             await cmd.ExecuteNonQueryAsync();
         }
 
-        // ─────────────────────────────────────────────────────────────────
-        // רישום שגיאות
-        // ─────────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// רושם שגיאה ב-ErrorLog – בולע exceptions כדי למנוע קריסה.
-        /// </summary>
-        public async Task LogError(int jobId, string context, Exception ex)
+public async Task LogError(int jobId, string context, Exception ex)
         {
             try
             {
@@ -266,15 +218,11 @@ namespace OptiLoad.Data
             }
             catch
             {
-                // בלע – לא להקריס בגלל כשל ברישום שגיאות
+                
             }
         }
 
-        // ─────────────────────────────────────────────────────────────────
-        // CRUD – Box
-        // ─────────────────────────────────────────────────────────────────
-
-        public async Task<List<Box>> GetAllBoxes()
+public async Task<List<Box>> GetAllBoxes()
         {
             using var conn = new SqlConnection(_connectionString);
             using var cmd  = new SqlCommand("SELECT BoxId, BoxName, Width, Height, Depth, WeightKg, IsFragile, AllowRotation, CreatedAt FROM Box ORDER BY BoxId", conn)
@@ -380,11 +328,7 @@ namespace OptiLoad.Data
             return await cmd.ExecuteNonQueryAsync() > 0;
         }
 
-        // ─────────────────────────────────────────────────────────────────
-        // CRUD – ContainerTemplate + Container
-        // ─────────────────────────────────────────────────────────────────
-
-        public async Task<List<ContainerTemplate>> GetAllContainerTemplates()
+public async Task<List<ContainerTemplate>> GetAllContainerTemplates()
         {
             using var conn = new SqlConnection(_connectionString);
             using var cmd  = new SqlCommand("SELECT TemplateId, TemplateName, Width, Height, Depth, MaxWeightKg, CreatedAt FROM ContainerTemplate ORDER BY TemplateId", conn)
@@ -474,11 +418,7 @@ namespace OptiLoad.Data
             return list;
         }
 
-        // ─────────────────────────────────────────────────────────────────
-        // CRUD – PackingJob
-        // ─────────────────────────────────────────────────────────────────
-
-        public async Task<List<PackingJob>> GetAllJobs()
+public async Task<List<PackingJob>> GetAllJobs()
         {
             using var conn = new SqlConnection(_connectionString);
             using var cmd  = new SqlCommand("SELECT JobId, ContainerId, Status, BinsUsed, VolumeUtilization, TotalWeightKg, SolveTimeSeconds, IsOptimal, StatusMessage, CreatedAt, CompletedAt FROM PackingJob ORDER BY JobId DESC", conn)
@@ -522,17 +462,12 @@ namespace OptiLoad.Data
             CompletedAt       = reader.IsDBNull(10) ? null : reader.GetDateTime(10)
         };
 
-        // ─────────────────────────────────────────────────────────────────
-        // PlacementResult
-        // ─────────────────────────────────────────────────────────────────
-
-        public async Task<bool> DeleteJob(int jobId)
+public async Task<bool> DeleteJob(int jobId)
         {
             using var conn = new SqlConnection(_connectionString);
             await conn.OpenAsync();
 
-            // מחק בסדר: PlacementResult → PackingJobBox → PackingJob (FK constraints)
-            foreach (var sql in new[]
+foreach (var sql in new[]
             {
                 "DELETE FROM PlacementResult WHERE JobId=@JobId",
                 "DELETE FROM PackingJobBox   WHERE JobId=@JobId",
@@ -598,21 +533,12 @@ namespace OptiLoad.Data
             return list;
         }
 
-        // ─────────────────────────────────────────────────────────────────
-        // Upsert – Box + ContainerTemplate
-        // ─────────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// מוצא ארגז לפי שם → מעדכן את מידותיו ומחזיר BoxId הקיים.
-        /// אם לא קיים → מכניס ומחזיר BoxId חדש.
-        /// </summary>
-        public async Task<int> UpsertBox(Box box)
+public async Task<int> UpsertBox(Box box)
         {
             using var conn = new SqlConnection(_connectionString);
             await conn.OpenAsync();
 
-            // בדוק אם קיים
-            using var check = new SqlCommand(
+using var check = new SqlCommand(
                 "SELECT BoxId FROM Box WHERE BoxName = @BoxName", conn)
             { CommandType = CommandType.Text };
             check.Parameters.AddWithValue("@BoxName", box.BoxName);
@@ -620,7 +546,7 @@ namespace OptiLoad.Data
 
             if (existing != null)
             {
-                // עדכן
+                
                 int id = Convert.ToInt32(existing);
                 using var upd = new SqlCommand(
                     "UPDATE Box SET Width=@Width,Height=@Height,Depth=@Depth," +
@@ -639,7 +565,7 @@ namespace OptiLoad.Data
             }
             else
             {
-                // הכנס חדש
+                
                 using var ins = new SqlCommand(
                     "INSERT INTO Box (BoxName,Width,Height,Depth,WeightKg,IsFragile,AllowRotation,CreatedAt) " +
                     "VALUES (@BoxName,@Width,@Height,@Depth,@WeightKg,@IsFragile,@AllowRotation,@CreatedAt); " +
@@ -657,10 +583,6 @@ namespace OptiLoad.Data
             }
         }
 
-        /// <summary>
-        /// מוצא תבנית מכולה לפי מידות (סבילות 0.01) → מחזיר TemplateId קיים.
-        /// אם לא קיים → מכניס תבנית חדשה ומחזיר TemplateId חדש.
-        /// </summary>
         public async Task<int> UpsertContainerTemplate(ContainerDimensions dims)
         {
             using var conn = new SqlConnection(_connectionString);

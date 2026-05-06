@@ -1,11 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace OptiLoad.Core.Models
 {
-    /// <summary>
-    /// ארגז – מידות, משקל ואפשרויות סיבוב (טבלה: Box)
-    /// </summary>
+
     public class Box
     {
         public int      BoxId         { get; set; }
@@ -20,10 +18,6 @@ namespace OptiLoad.Core.Models
 
         public double Volume => Width * Height * Depth;
 
-        /// <summary>
-        /// מחזיר את כל כיוני הסיבוב האפשריים.
-        /// אם AllowRotation=false – רק הכיוון המקורי.
-        /// </summary>
         public IEnumerable<Rotation> GetAllowedRotations()
         {
             var (w, h, d) = (Width, Height, Depth);

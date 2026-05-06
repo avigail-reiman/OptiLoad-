@@ -1,10 +1,8 @@
-using System;
+﻿using System;
 
 namespace OptiLoad.Core.Models
 {
-    /// <summary>
-    /// יומן שגיאות (טבלה: ErrorLog)
-    /// </summary>
+
     public class ErrorLog
     {
         public int      ErrorId    { get; set; }
