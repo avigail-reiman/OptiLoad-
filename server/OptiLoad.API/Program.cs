@@ -61,6 +61,7 @@ builder.Services.AddAuthentication(options =>
 var app = builder.Build();
 
 app.UseResponseCompression();
+app.UseCors("DevFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -106,8 +107,6 @@ else
     app.UseDefaultFiles();
     app.UseStaticFiles();
 }
-
-app.UseCors("DevFrontend");
 
 if (app.Environment.IsDevelopment())
 {
