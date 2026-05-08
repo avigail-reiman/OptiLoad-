@@ -9,7 +9,7 @@ using OptiLoad.Core.Services;
 namespace OptiLoad.Data
 {
 
-    public class DatabaseService : IPackingRepository, IAdminRepository
+    public class DatabaseService : IPackingRepository, IAdminRepository, ISnapshotRepository
     {
         private readonly string _connectionString;
 
@@ -654,6 +654,64 @@ using var check = new SqlCommand(
             cmd.Parameters.AddWithValue("@Hash",      passwordHash);
             cmd.Parameters.AddWithValue("@Salt",      passwordSalt);
             cmd.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
+            await conn.OpenAsync();
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        public async Task SaveSnapshotsAsync(int jobId, IEnumerable<ContainerSnapshot> snapshots)
+        {
+            using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
+            using var delCmd = new SqlCommand(
+                "DELETE FROM ContainerSnapshot WHERE JobId=@JobId", conn);
+            delCmd.Parameters.AddWithValue("@JobId", jobId);
+            await delCmd.ExecuteNonQueryAsync();
+
+            foreach (var s in snapshots)
+            {
+                using var cmd = new SqlCommand(
+                    "INSERT INTO ContainerSnapshot (JobId, LoadingStep, BoxName, ImageData, CreatedAt) " +
+                    "VALUES (@JobId, @Step, @BoxName, @ImageData, @CreatedAt)", conn);
+                cmd.Parameters.AddWithValue("@JobId",     jobId);
+                cmd.Parameters.AddWithValue("@Step",      s.LoadingStep);
+                cmd.Parameters.AddWithValue("@BoxName",   s.BoxName);
+                cmd.Parameters.AddWithValue("@ImageData", s.ImageData);
+                cmd.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
+                await cmd.ExecuteNonQueryAsync();
+            }
+        }
+
+        public async Task<List<ContainerSnapshot>> GetSnapshotsAsync(int jobId)
+        {
+            var list = new List<ContainerSnapshot>();
+            using var conn = new SqlConnection(_connectionString);
+            using var cmd  = new SqlCommand(
+                "SELECT Id, JobId, LoadingStep, BoxName, ImageData, CreatedAt " +
+                "FROM ContainerSnapshot WHERE JobId=@JobId ORDER BY LoadingStep", conn);
+            cmd.Parameters.AddWithValue("@JobId", jobId);
+            await conn.OpenAsync();
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                list.Add(new ContainerSnapshot
+                {
+                    Id          = reader.GetInt32(0),
+                    JobId       = reader.GetInt32(1),
+                    LoadingStep = reader.GetInt32(2),
+                    BoxName     = reader.GetString(3),
+                    ImageData   = reader.GetString(4),
+                    CreatedAt   = reader.GetDateTime(5)
+                });
+            }
+            return list;
+        }
+
+        public async Task DeleteSnapshotsAsync(int jobId)
+        {
+            using var conn = new SqlConnection(_connectionString);
+            using var cmd  = new SqlCommand(
+                "DELETE FROM ContainerSnapshot WHERE JobId=@JobId", conn);
+            cmd.Parameters.AddWithValue("@JobId", jobId);
             await conn.OpenAsync();
             await cmd.ExecuteNonQueryAsync();
         }

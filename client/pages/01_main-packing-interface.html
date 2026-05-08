@@ -225,6 +225,10 @@ td input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:#58a6
       <button id="step-next-btn"   class="btn-step-nav">הבא ▶</button>
       <button id="step-finish-btn" class="btn-step-fin">הצג הכל ⏭</button>
     </div>
+    <button id="save-snapshots-btn" style="width:100%;margin-top:10px;background:#1f6feb;border:1px solid #388bfd;border-radius:7px;color:#fff;cursor:pointer;font-size:12px;font-weight:700;padding:8px;display:none">
+      📸 שמור תמונות לשטח
+    </button>
+    <div id="snapshot-status" style="font-size:11px;color:#8b949e;margin-top:6px;text-align:center;display:none"></div>
   </div>
 
   <!-- Results -->
@@ -270,6 +274,8 @@ function logout() {
   window.location.replace('login.html');
 }
 document.getElementById('logout-btn').addEventListener('click', logout);
+
+let currentJobId = null;
 
 // ─── Default demo boxes ──────────────────────────────────────────
 const DEMO = [
@@ -533,8 +539,16 @@ function addStepBoxMesh(pb, highlight) {
 }
 
 // ─── מעבר לשלב הבא ───────────────────────────────────────────────
+function rebuildStep(targetIndex) {
+  stepMeshPairs.forEach(p => { scene.remove(p.mesh); scene.remove(p.edges); });
+  stepMeshPairs = [];
+  for (let i = 0; i <= targetIndex && i < stepData.length; i++) {
+    const pair = addStepBoxMesh(stepData[i], i === targetIndex);
+    stepMeshPairs.push(pair);
+  }
+}
+
 function advanceStep() {
-  // בטל הדגשה מהארגז הקודם
   if (stepIndex >= 0 && stepIndex < stepMeshPairs.length) {
     const {mesh, edges} = stepMeshPairs[stepIndex];
     mesh.material.opacity = 0.84;
@@ -656,9 +670,12 @@ async function runPacking(mode) {
       control.update();
 
       // הצג פאנל שלב, הסתר תוצאות
-      document.getElementById('step-panel').style.display   = 'block';
-      document.getElementById('sec-results').style.display  = 'none';
-      document.getElementById('sec-legend').style.display   = 'none';
+      document.getElementById('step-panel').style.display         = 'block';
+      document.getElementById('sec-results').style.display        = 'none';
+      document.getElementById('sec-legend').style.display         = 'none';
+      document.getElementById('save-snapshots-btn').style.display = 'block';
+      document.getElementById('snapshot-status').style.display    = 'none';
+      currentJobId = data.jobId ?? null;
       document.getElementById('step-next-btn').disabled     = false;
 
       // הצג ארגז ראשון מיד
@@ -679,6 +696,53 @@ async function runPacking(mode) {
 }
 
 // Auto-run demo on page load
+async function saveSnapshotsToDb() {
+  if (!stepData || stepData.length === 0) return;
+  const statusEl = document.getElementById('snapshot-status');
+  const btn      = document.getElementById('save-snapshots-btn');
+  btn.disabled   = true;
+  statusEl.style.display = 'block';
+  statusEl.textContent   = 'מצלם שלבים...';
+
+  const snapshots = [];
+  const savedIndex = stepIndex;
+
+  for (let i = 0; i < stepData.length; i++) {
+    stepIndex = i;
+    rebuildStep(i);
+    renderer.render(scene, camera);
+    await new Promise(r => requestAnimationFrame(r));
+    renderer.render(scene, camera);
+    const imageData = renderer.domElement.toDataURL('image/jpeg', 0.7).split(',')[1];
+    snapshots.push({ loadingStep: i + 1, boxName: stepData[i].name ?? '', imageData });
+    statusEl.textContent = `מצלם ${i + 1}/${stepData.length}...`;
+  }
+
+  stepIndex = savedIndex;
+  rebuildStep(savedIndex);
+
+  try {
+    const jobId = currentJobId ?? 0;
+    const res = await fetch(`http://localhost:5098/api/snapshots/${jobId}`, {
+      method:  'POST',
+      headers: getAuthHeaders(),
+      body:    JSON.stringify(snapshots)
+    });
+    if (res.status === 401) { logout(); return; }
+    if (res.ok) {
+      statusEl.textContent = `✅ ${snapshots.length} תמונות נשמרו (job ${jobId})`;
+      statusEl.style.color = '#3fb950';
+    } else {
+      statusEl.textContent = 'שגיאה בשמירה';
+      statusEl.style.color = '#f85149';
+    }
+  } catch {
+    statusEl.textContent = 'לא ניתן להתחבר לשרת';
+    statusEl.style.color = '#f85149';
+  }
+  btn.disabled = false;
+}
+
 window.addEventListener('load', () => {
   document.getElementById('btn-add-row').addEventListener('click', () => addBoxRow());
   document.getElementById('run-instant-btn').addEventListener('click', () => runPacking('instant'));
@@ -690,6 +754,7 @@ window.addEventListener('load', () => {
       renderResult(lastApiData);
     }
   });
+  document.getElementById('save-snapshots-btn').addEventListener('click', saveSnapshotsToDb);
   setTimeout(() => runPacking('instant'), 150);
 });
 </script>
