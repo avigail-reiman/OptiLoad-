@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OptiLoad – הצטרפות לתוכנית שיבוץ</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:'Segoe UI',Tahoma,Arial,sans-serif;min-height:100vh}
+
+.topbar{background:#161b22;border-bottom:1px solid #30363d;padding:12px 24px;display:flex;align-items:center;gap:12px}
+.topbar h1{color:#58a6ff;font-size:17px}
+.session-badge{background:#21262d;border:1px solid #30363d;border-radius:20px;padding:3px 12px;font-size:12px;color:#8b949e}
+
+.container{max-width:700px;margin:0 auto;padding:32px 16px}
+
+.card{background:#161b22;border:1px solid #30363d;border-radius:14px;padding:28px;margin-bottom:20px}
+.card h2{font-size:17px;color:#e6edf3;margin-bottom:18px}
+
+/* Join form */
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:12px;color:#8b949e;font-weight:600;margin-bottom:6px}
+.form-group input{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:8px;
+  color:#e6edf3;padding:11px 14px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s}
+.form-group input:focus{border-color:#58a6ff;box-shadow:0 0 0 3px rgba(88,166,255,.15)}
+
+.btn{padding:10px 20px;border-radius:8px;border:1px solid;cursor:pointer;font-size:14px;font-weight:600;transition:all .15s}
+.btn-primary{background:linear-gradient(135deg,#1f6feb,#0d419d);border-color:#388bfd;color:#fff;width:100%}
+.btn-primary:hover:not(:disabled){background:linear-gradient(135deg,#388bfd,#1f6feb);transform:translateY(-1px)}
+.btn-primary:disabled{background:#1c2128;border-color:#30363d;color:#484f58;cursor:not-allowed}
+.btn-danger{background:rgba(248,81,73,.1);border-color:#f85149;color:#f85149;padding:6px 12px;font-size:12px}
+.btn-danger:hover{background:rgba(248,81,73,.2)}
+
+/* Status views */
+.status-box{text-align:center;padding:40px 20px}
+.status-icon{font-size:52px;margin-bottom:12px}
+.status-box h3{font-size:18px;margin-bottom:8px}
+.status-box p{color:#8b949e;font-size:13px}
+.spinner{width:32px;height:32px;border:3px solid #21262d;border-top-color:#58a6ff;border-radius:50%;
+  animation:spin .7s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Boxes table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:right;color:#6e7681;font-weight:600;padding:8px;border-bottom:1px solid #21262d}
+td{padding:8px;border-bottom:1px solid #161b22}
+tr:last-child td{border-bottom:none}
+
+.add-section{background:#0d1117;border:1px solid #21262d;border-radius:10px;padding:16px;margin-bottom:16px}
+.add-section h4{font-size:13px;color:#8b949e;margin-bottom:12px}
+.add-row{display:flex;gap:10px;align-items:flex-end}
+.add-row .form-group{margin:0;flex:1}
+.add-row select{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:8px;
+  color:#e6edf3;padding:10px 12px;font-size:13px;font-family:inherit;outline:none}
+.add-row input[type=number]{width:80px}
+.btn-add{background:rgba(35,134,54,.15);border:1px solid #3fb950;color:#3fb950;padding:10px 16px;
+  border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap}
+.btn-add:hover{background:rgba(35,134,54,.3)}
+
+.error-msg{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.4);border-radius:8px;
+  color:#f85149;font-size:12px;padding:10px 14px;margin-top:12px;display:none}
+.error-msg.show{display:block}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>🚛 OptiLoad</h1>
+  <div class="session-badge" id="session-name-badge">טוען...</div>
+</div>
+
+<div class="container" id="main-container">
+  <!-- Content injected by JS -->
+</div>
+
+<script>
+const API        = 'http://localhost:5098';
+const params     = new URLSearchParams(location.search);
+const linkToken  = params.get('token');
+const USER_KEY   = 'optiload_user_token_' + linkToken;
+
+if (!linkToken) {
+  document.getElementById('main-container').innerHTML =
+    '<div style="text-align:center;padding:60px;color:#f85149">קישור לא תקין</div>';
+}
+
+let sessionInfo = null;
+let userToken   = localStorage.getItem(USER_KEY);
+
+// ── Step 1: load session info ───────────────────────────────
+async function init() {
+  try {
+    const r = await fetch(`${API}/api/session/link/${linkToken}`);
+    if (!r.ok) { showError('תוכנית לא נמצאה או קישור לא תקין'); return; }
+    sessionInfo = await r.json();
+    document.getElementById('session-name-badge').textContent = sessionInfo.name;
+
+    if (sessionInfo.status !== 'Open') {
+      showView('closed'); return;
+    }
+
+    if (userToken) {
+      checkStatus();
+    } else {
+      showView('join');
+    }
+  } catch {
+    showError('לא ניתן להתחבר לשרת');
+  }
+}
+
+// ── Status polling ──────────────────────────────────────────
+async function checkStatus() {
+  try {
+    const r = await fetch(`${API}/api/session/link/${linkToken}/status?userToken=${encodeURIComponent(userToken)}`);
+    if (!r.ok) { userToken = null; localStorage.removeItem(USER_KEY); showView('join'); return; }
+    const data = await r.json();
+
+    if (data.status === 'Approved') {
+      showView('boxes', data);
+    } else if (data.status === 'Denied') {
+      showView('denied');
+    } else {
+      showView('pending', data);
+    }
+  } catch {
+    showError('שגיאה בבדיקת הסטטוס');
+  }
+}
+
+// ── Views ───────────────────────────────────────────────────
+function showView(view, data = {}) {
+  const el = document.getElementById('main-container');
+
+  if (view === 'closed') {
+    el.innerHTML = `<div class="card status-box">
+      <div class="status-icon">🔒</div>
+      <h3>התוכנית סגורה</h3>
+      <p>תוכנית זו אינה מקבלת בקשות כרגע</p></div>`;
+
+  } else if (view === 'join') {
+    el.innerHTML = `<div class="card">
+      <h2>הצטרפות לתוכנית: ${escHtml(sessionInfo.name)}</h2>
+      ${sessionInfo.description ? `<p style="color:#8b949e;font-size:13px;margin-bottom:18px">${escHtml(sessionInfo.description)}</p>` : ''}
+      <div class="form-group">
+        <label>שמך המלא *</label>
+        <input id="inp-name" type="text" placeholder="לדוגמה: ישראל ישראלי">
+      </div>
+      <div class="form-group">
+        <label>אימייל (אופציונלי)</label>
+        <input id="inp-email" type="email" placeholder="your@email.com">
+      </div>
+      <button class="btn btn-primary" onclick="submitJoin()">שלח בקשת הרשאה</button>
+      <div class="error-msg" id="join-err"></div>
+    </div>`;
+
+  } else if (view === 'pending') {
+    el.innerHTML = `<div class="card status-box">
+      <div class="spinner"></div>
+      <h3>הבקשה ממתינה לאישור</h3>
+      <p>שלום ${escHtml(data.displayName || '')}! המנהל יאשר את גישתך בקרוב.</p>
+      <p style="margin-top:8px;font-size:12px;color:#484f58">הדף יתרענן אוטומטית</p>
+    </div>`;
+    setTimeout(checkStatus, 5000);
+
+  } else if (view === 'denied') {
+    el.innerHTML = `<div class="card status-box">
+      <div class="status-icon">❌</div>
+      <h3>הגישה נדחתה</h3>
+      <p>המנהל דחה את בקשת הגישה שלך</p>
+    </div>`;
+
+  } else if (view === 'boxes') {
+    el.innerHTML = `<div class="card">
+      <h2>ניהול ארגזים — ${escHtml(sessionInfo.name)}</h2>
+      <div class="add-section">
+        <h4>הוספת ארגז <span style="font-size:11px;color:#8b949e;font-weight:normal">— כל המידות בסנטימטרים</span></h4>
+        <div class="add-row" style="flex-wrap:wrap;gap:8px 12px">
+          <div class="form-group">
+            <label>שם</label>
+            <input type="text" id="box-name" placeholder="שם ארגז" style="${inputStyle}">
+          </div>
+          <div class="form-group">
+            <label>W — רוחב (ס"מ)</label>
+            <input type="number" id="box-w" min="1" placeholder="ס״מ" style="${inputStyle};width:80px">
+          </div>
+          <div class="form-group">
+            <label>H — גובה (ס"מ)</label>
+            <input type="number" id="box-h" min="1" placeholder="ס״מ" style="${inputStyle};width:80px">
+          </div>
+          <div class="form-group">
+            <label>D — עומק (ס"מ)</label>
+            <input type="number" id="box-d" min="1" placeholder="ס״מ" style="${inputStyle};width:80px">
+          </div>
+          <div class="form-group">
+            <label>משקל (ק"ג)</label>
+            <input type="number" id="box-kg" min="0" step="0.1" placeholder="0" style="${inputStyle};width:80px">
+          </div>
+          <div class="form-group" style="justify-content:flex-end">
+            <label>שביר</label>
+            <input type="checkbox" id="box-fragile" style="width:20px;height:20px;margin-top:6px;cursor:pointer">
+          </div>
+          <div class="form-group">
+            <label>כמות</label>
+            <input type="number" id="box-qty" min="1" value="1" style="${inputStyle};width:70px">
+          </div>
+          <button class="btn-add" onclick="addBox()">+ הוסף</button>
+        </div>
+      </div>
+      <div id="boxes-table"><span style="color:#484f58;font-size:13px">טוען ארגזים...</span></div>
+      <div class="error-msg" id="box-err"></div>
+    </div>`;
+
+    loadBoxes();
+  }
+}
+
+// ── Join ────────────────────────────────────────────────────
+async function submitJoin() {
+  const name  = document.getElementById('inp-name').value.trim();
+  const email = document.getElementById('inp-email').value.trim();
+  const err   = document.getElementById('join-err');
+
+  if (!name) { err.textContent = 'יש להזין שם'; err.classList.add('show'); return; }
+  err.classList.remove('show');
+
+  try {
+    const r = await fetch(`${API}/api/session/link/${linkToken}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ displayName: name, email: email || null })
+    });
+    if (!r.ok) { err.textContent = 'שגיאה בשליחת הבקשה'; err.classList.add('show'); return; }
+    const data = await r.json();
+    userToken = data.userToken;
+    localStorage.setItem(USER_KEY, userToken);
+    showView('pending', { displayName: name });
+  } catch {
+    const err2 = document.getElementById('join-err');
+    err2.textContent = 'לא ניתן להתחבר לשרת';
+    err2.classList.add('show');
+  }
+}
+
+// ── Boxes ───────────────────────────────────────────────────
+const inputStyle = 'background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3;padding:10px 12px;font-size:13px;outline:none';
+
+async function loadBoxes() {
+  const r = await fetch(`${API}/api/session/${sessionInfo.sessionId}/boxes`,
+    { headers: { 'X-User-Token': userToken } });
+  if (!r.ok) return;
+  const boxes = await r.json();
+  const el = document.getElementById('boxes-table');
+
+  if (!boxes.length) { el.innerHTML = '<p style="color:#484f58;font-size:13px">אין ארגזים עדיין</p>'; return; }
+
+  el.innerHTML = `<table>
+    <thead><tr><th>שם ארגז</th><th>מידות</th><th>משקל</th><th>כמות</th><th>שביר</th><th>נוסף ע"י</th><th>תאריך</th><th></th></tr></thead>
+    <tbody>${boxes.map(b => `
+      <tr>
+        <td>${escHtml(b.boxName||'')}</td>
+        <td>${b.width}×${b.height}×${b.depth}</td>
+        <td>${b.weightKg} ק"ג</td>
+        <td>${b.quantity}</td>
+        <td>${b.isFragile ? '✔' : ''}</td>
+        <td>${escHtml(b.addedBy)}</td>
+        <td>${new Date(b.addedAt).toLocaleString('he-IL')}</td>
+        <td><button class="btn-danger" onclick="deleteBox(${b.sessionBoxId})">הסר</button></td>
+      </tr>`).join('')}
+    </tbody></table>`;
+}
+
+async function addBox() {
+  const name     = document.getElementById('box-name').value.trim();
+  const w        = parseFloat(document.getElementById('box-w').value);
+  const h        = parseFloat(document.getElementById('box-h').value);
+  const d        = parseFloat(document.getElementById('box-d').value);
+  const kg       = parseFloat(document.getElementById('box-kg').value) || 0;
+  const fragile  = document.getElementById('box-fragile').checked;
+  const qty      = parseInt(document.getElementById('box-qty').value);
+  const err      = document.getElementById('box-err');
+  err.classList.remove('show');
+
+  if (!name)          { err.textContent = 'יש להזין שם ארגז'; err.classList.add('show'); return; }
+  if (!w || !h || !d) { err.textContent = 'יש להזין מידות תקינות (W, H, D)'; err.classList.add('show'); return; }
+  if (qty < 1)        { err.textContent = 'יש להזין כמות תקינה'; err.classList.add('show'); return; }
+
+  const r = await fetch(`${API}/api/session/${sessionInfo.sessionId}/boxes/custom`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-User-Token': userToken },
+    body: JSON.stringify({ boxName: name, width: w, height: h, depth: d, weightKg: kg,
+                           isFragile: fragile, allowRotation: true, quantity: qty })
+  });
+
+  if (r.ok) {
+    loadBoxes();
+    document.getElementById('box-name').value = '';
+    document.getElementById('box-w').value = '';
+    document.getElementById('box-h').value = '';
+    document.getElementById('box-d').value = '';
+    document.getElementById('box-kg').value = '';
+    document.getElementById('box-fragile').checked = false;
+    document.getElementById('box-qty').value = 1;
+  } else {
+    err.textContent = 'שגיאה בהוספת הארגז';
+    err.classList.add('show');
+  }
+}
+
+async function deleteBox(sessionBoxId) {
+  const r = await fetch(`${API}/api/session/${sessionInfo.sessionId}/boxes/${sessionBoxId}`, {
+    method: 'DELETE',
+    headers: { 'X-User-Token': userToken }
+  });
+  if (r.ok || r.status === 204) loadBoxes();
+}
+
+function showError(msg) {
+  document.getElementById('main-container').innerHTML =
+    `<div style="text-align:center;padding:60px;color:#f85149">${msg}</div>`;
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>

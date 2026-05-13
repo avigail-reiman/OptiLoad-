@@ -9,7 +9,7 @@ using OptiLoad.Core.Services;
 namespace OptiLoad.Data
 {
 
-    public class DatabaseService : IPackingRepository, IAdminRepository, ISnapshotRepository
+    public partial class DatabaseService : IPackingRepository, IAdminRepository, ISnapshotRepository
     {
         private readonly string _connectionString;
 

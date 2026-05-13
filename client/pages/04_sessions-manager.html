@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OptiLoad – ניהול תוכניות שיבוץ</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:'Segoe UI',Tahoma,Arial,sans-serif;min-height:100vh}
+.topbar{background:#161b22;border-bottom:1px solid #30363d;padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{color:#58a6ff;font-size:18px}
+.topbar-right{display:flex;gap:10px;align-items:center}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+.btn-primary{background:linear-gradient(135deg,#1f6feb,#0d419d);border-color:#388bfd;color:#fff}
+.btn-primary:hover{background:linear-gradient(135deg,#388bfd,#1f6feb);transform:translateY(-1px)}
+.btn-danger{background:rgba(248,81,73,.1);border-color:#f85149;color:#f85149}
+.btn-danger:hover{background:rgba(248,81,73,.2)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-success{background:rgba(35,134,54,.15);border-color:#3fb950;color:#3fb950}
+.btn-success:hover{background:rgba(35,134,54,.3)}
+.btn-secondary{background:#21262d;border-color:#30363d;color:#8b949e}
+.btn-secondary:hover{background:#30363d;color:#e6edf3}
+
+.container{max-width:1100px;margin:0 auto;padding:24px}
+
+.card{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:20px;margin-bottom:16px}
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:12px}
+.session-name{font-size:16px;font-weight:700;color:#e6edf3}
+.session-meta{font-size:12px;color:#6e7681;margin-top:4px}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-open{background:rgba(35,134,54,.15);color:#3fb950;border:1px solid rgba(63,185,80,.3)}
+.badge-closed{background:rgba(110,118,129,.15);color:#6e7681;border:1px solid #30363d}
+
+.link-row{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:10px 14px;
+  display:flex;align-items:center;gap:10px;margin-top:10px;font-size:12px;color:#58a6ff;word-break:break-all}
+.link-row span{flex:1}
+.copy-btn{flex-shrink:0;background:#21262d;border:1px solid #30363d;border-radius:6px;color:#8b949e;
+  cursor:pointer;padding:4px 8px;font-size:11px;transition:all .15s}
+.copy-btn:hover{background:#30363d;color:#e6edf3}
+
+.requests-section{margin-top:14px;border-top:1px solid #21262d;padding-top:14px}
+.requests-section h4{font-size:13px;color:#8b949e;margin-bottom:10px}
+.request-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #161b22;font-size:13px}
+.request-row:last-child{border-bottom:none}
+.req-name{flex:1;font-weight:600}
+.req-email{color:#6e7681;font-size:12px}
+.req-time{font-size:11px;color:#484f58;min-width:130px;text-align:left}
+.badge-pending{background:rgba(210,153,34,.15);color:#e3b341;border:1px solid rgba(210,153,34,.3)}
+.badge-approved{background:rgba(35,134,54,.15);color:#3fb950;border:1px solid rgba(63,185,80,.3)}
+.badge-denied{background:rgba(248,81,73,.1);color:#f85149;border:1px solid rgba(248,81,73,.3)}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;
+  align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#161b22;border:1px solid #30363d;border-radius:14px;padding:28px;width:100%;max-width:460px}
+.modal h3{color:#58a6ff;margin-bottom:20px;font-size:18px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:12px;color:#8b949e;margin-bottom:6px;font-weight:600}
+.form-group input,.form-group textarea{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:8px;
+  color:#e6edf3;padding:10px 12px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s}
+.form-group input:focus,.form-group textarea:focus{border-color:#58a6ff;box-shadow:0 0 0 3px rgba(88,166,255,.15)}
+.form-group textarea{resize:vertical;min-height:80px}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+
+.empty-state{text-align:center;padding:60px 20px;color:#6e7681}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+
+.boxes-section{margin-top:14px;border-top:1px solid #21262d;padding-top:14px}
+.boxes-section h4{font-size:13px;color:#8b949e;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:right;color:#6e7681;font-weight:600;padding:6px 8px;border-bottom:1px solid #21262d}
+td{padding:6px 8px;border-bottom:1px solid #161b22;color:#e6edf3}
+tr:last-child td{border-bottom:none}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2937;
+  border:1px solid #30363d;border-radius:8px;padding:10px 20px;font-size:13px;
+  color:#e6edf3;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>🚛 OptiLoad — ניהול תוכניות שיבוץ</h1>
+  <div class="topbar-right">
+    <span id="admin-name" style="color:#8b949e;font-size:13px"></span>
+    <button class="btn btn-secondary" onclick="location.href='01_main-packing-interface.html'">🚛 ממשק שיבוץ</button>
+    <button class="btn btn-secondary" onclick="location.href='03_snapshot-viewer.html'">📸 תמונות</button>
+    <button class="btn btn-primary" onclick="openCreateModal()">+ תוכנית חדשה</button>
+    <button class="btn btn-secondary" onclick="logout()">יציאה</button>
+  </div>
+</div>
+
+<div class="container">
+  <div id="sessions-list"></div>
+</div>
+
+<!-- Modal: יצירת תוכנית -->
+<div class="modal-overlay" id="create-modal">
+  <div class="modal">
+    <h3>תוכנית שיבוץ חדשה</h3>
+    <div class="form-group">
+      <label>שם התוכנית *</label>
+      <input id="new-name" type="text" placeholder="לדוגמה: משלוח יוני 2026">
+    </div>
+    <div class="form-group">
+      <label>תיאור (אופציונלי)</label>
+      <textarea id="new-desc" placeholder="פרטים נוספים על התוכנית..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeCreateModal()">ביטול</button>
+      <button class="btn btn-primary" onclick="createSession()">צור תוכנית</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://localhost:5098';
+const token = sessionStorage.getItem('optiload_token');
+if (!token) location.href = 'login.html';
+
+const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+
+// ── decode JWT to get username ──────────────────────────────
+try {
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  const name = payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || payload.name || '';
+  document.getElementById('admin-name').textContent = 'שלום, ' + name;
+} catch {}
+
+async function apiFetch(path, opts = {}) {
+  const r = await fetch(API + path, { headers, ...opts });
+  if (r.status === 401) { logout(); return null; }
+  return r;
+}
+
+// ── Load sessions ───────────────────────────────────────────
+async function loadSessions() {
+  const r = await apiFetch('/api/session');
+  if (!r) return;
+  const sessions = await r.json();
+  const el = document.getElementById('sessions-list');
+
+  if (!sessions.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">📋</div>
+      <p>אין עדיין תוכניות שיבוץ</p><p style="margin-top:8px;font-size:13px">לחצי על "תוכנית חדשה" כדי להתחיל</p></div>`;
+    return;
+  }
+
+  el.innerHTML = sessions.map(s => buildSessionCard(s)).join('');
+
+  for (const s of sessions) {
+    loadRequests(s.sessionId);
+    loadBoxes(s.sessionId);
+  }
+}
+
+function buildSessionCard(s) {
+  const link = `${location.origin}/pages/05_user-join.html?token=${s.linkToken}`;
+  const badge = s.status === 'Open'
+    ? `<span class="badge badge-open">פתוחה</span>`
+    : `<span class="badge badge-closed">סגורה</span>`;
+  const created = new Date(s.createdAt).toLocaleDateString('he-IL');
+  const toggleLabel = s.status === 'Open' ? 'סגור תוכנית' : 'פתח תוכנית';
+  const toggleStatus = s.status === 'Open' ? 'Closed' : 'Open';
+
+  return `
+  <div class="card" id="card-${s.sessionId}">
+    <div class="card-header">
+      <div>
+        <div class="session-name">${escHtml(s.name)} ${badge}</div>
+        ${s.description ? `<div class="session-meta">${escHtml(s.description)}</div>` : ''}
+        <div class="session-meta">נוצרה: ${created}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button class="btn btn-sm" style="background:linear-gradient(135deg,#238636,#1a7f37);border-color:#2ea043;color:#fff" onclick="location.href='01_main-packing-interface.html?sessionId=${s.sessionId}'">▶ הרץ שיבוץ</button>
+        <button class="btn btn-sm btn-secondary" onclick="toggleStatus(${s.sessionId},'${toggleStatus}')">${toggleLabel}</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteSession(${s.sessionId})">מחק</button>
+      </div>
+    </div>
+
+    <div class="link-row">
+      🔗 קישור לשיתוף:
+      <span id="link-${s.sessionId}">${link}</span>
+      <button class="copy-btn" onclick="copyLink(${s.sessionId})">העתק</button>
+    </div>
+
+    <div class="requests-section">
+      <h4>בקשות הרשאה</h4>
+      <div id="requests-${s.sessionId}"><span style="color:#484f58;font-size:12px">טוען...</span></div>
+    </div>
+
+    <div class="boxes-section">
+      <h4>ארגזים בתוכנית</h4>
+      <div id="boxes-${s.sessionId}"><span style="color:#484f58;font-size:12px">טוען...</span></div>
+    </div>
+  </div>`;
+}
+
+async function loadRequests(sessionId) {
+  const r = await apiFetch(`/api/session/${sessionId}/requests`);
+  if (!r) return;
+  const requests = await r.json();
+  const el = document.getElementById(`requests-${sessionId}`);
+  if (!requests.length) { el.innerHTML = '<span style="color:#484f58;font-size:12px">אין בקשות</span>'; return; }
+
+  el.innerHTML = requests.map(req => `
+    <div class="request-row">
+      <div>
+        <div class="req-name">${escHtml(req.displayName || '—')}</div>
+        ${req.email ? `<div class="req-email">${escHtml(req.email)}</div>` : ''}
+      </div>
+      <span class="badge badge-${req.status.toLowerCase()}">${statusHe(req.status)}</span>
+      <span class="req-time">${new Date(req.requestedAt).toLocaleString('he-IL')}</span>
+      ${req.status === 'Pending' ? `
+        <button class="btn btn-sm btn-success" onclick="respondRequest(${sessionId},${req.requestId},'approve')">אשר</button>
+        <button class="btn btn-sm btn-danger"  onclick="respondRequest(${sessionId},${req.requestId},'deny')">דחה</button>
+      ` : ''}
+    </div>`).join('');
+}
+
+async function loadBoxes(sessionId) {
+  const r = await apiFetch(`/api/session/${sessionId}/boxes`);
+  if (!r) return;
+  const boxes = await r.json();
+  const el = document.getElementById(`boxes-${sessionId}`);
+  if (!boxes.length) { el.innerHTML = '<span style="color:#484f58;font-size:12px">אין ארגזים עדיין</span>'; return; }
+
+  el.innerHTML = `<table>
+    <thead><tr><th>שם</th><th>מידות (ר×ג×ע)</th><th>משקל</th><th>כמות</th><th>נוסף ע"י</th><th>תאריך</th><th></th></tr></thead>
+    <tbody>${boxes.map(b => `
+      <tr>
+        <td>${escHtml(b.boxName||'')}</td>
+        <td>${b.width}×${b.height}×${b.depth}</td>
+        <td>${b.weightKg} ק"ג</td>
+        <td>${b.quantity}</td>
+        <td>${escHtml(b.addedBy)}</td>
+        <td>${new Date(b.addedAt).toLocaleString('he-IL')}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteBox(${sessionId},${b.sessionBoxId})">הסר</button></td>
+      </tr>`).join('')}
+    </tbody></table>`;
+}
+
+// ── Actions ─────────────────────────────────────────────────
+async function respondRequest(sessionId, reqId, action) {
+  const r = await apiFetch(`/api/session/${sessionId}/requests/${reqId}/${action}`, { method: 'PUT' });
+  if (r && (r.ok || r.status === 204)) { showToast(action === 'approve' ? 'בקשה אושרה ✓' : 'בקשה נדחתה'); loadRequests(sessionId); }
+}
+
+async function toggleStatus(sessionId, newStatus) {
+  const r = await apiFetch(`/api/session/${sessionId}/status`, {
+    method: 'PUT', body: JSON.stringify({ status: newStatus })
+  });
+  if (r && r.ok) { showToast('סטטוס עודכן'); loadSessions(); }
+}
+
+async function deleteSession(sessionId) {
+  if (!confirm('למחוק את התוכנית וכל הנתונים שלה?')) return;
+  const r = await apiFetch(`/api/session/${sessionId}`, { method: 'DELETE' });
+  if (r && r.ok) { showToast('תוכנית נמחקה'); loadSessions(); }
+}
+
+async function deleteBox(sessionId, sessionBoxId) {
+  const r = await apiFetch(`/api/session/${sessionId}/boxes/${sessionBoxId}`, { method: 'DELETE' });
+  if (r && (r.ok || r.status === 204)) { showToast('ארגז הוסר'); loadBoxes(sessionId); }
+}
+
+function openCreateModal()  { document.getElementById('create-modal').classList.add('show'); }
+function closeCreateModal() { document.getElementById('create-modal').classList.remove('show'); }
+
+async function createSession() {
+  const name = document.getElementById('new-name').value.trim();
+  const desc = document.getElementById('new-desc').value.trim();
+  if (!name) { showToast('יש להזין שם'); return; }
+
+  const r = await apiFetch('/api/session', {
+    method: 'POST', body: JSON.stringify({ name, description: desc || null })
+  });
+  if (r && r.ok) {
+    closeCreateModal();
+    document.getElementById('new-name').value = '';
+    document.getElementById('new-desc').value = '';
+    showToast('תוכנית נוצרה ✓');
+    loadSessions();
+  }
+}
+
+function copyLink(sessionId) {
+  const txt = document.getElementById(`link-${sessionId}`).textContent;
+  navigator.clipboard.writeText(txt).then(() => showToast('קישור הועתק ✓'));
+}
+
+function logout() { sessionStorage.removeItem('optiload_token'); location.href = 'login.html'; }
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function statusHe(s) { return { Pending:'ממתין', Approved:'מאושר', Denied:'נדחה' }[s] || s; }
+
+loadSessions();
+// Auto-refresh requests every 15s
+setInterval(() => {
+  document.querySelectorAll('[id^="requests-"]').forEach(el => {
+    const id = el.id.replace('requests-', '');
+    loadRequests(parseInt(id));
+  });
+}, 15000);
+</script>
+</body>
+</html>

@@ -26,7 +26,9 @@ builder.Services.AddCors(options =>
                 "http://localhost:5500",
                 "http://127.0.0.1:5500")
               .AllowAnyHeader()
-              .AllowAnyMethod());
+              .AllowAnyMethod()
+              .WithExposedHeaders("X-User-Token")
+              .SetPreflightMaxAge(TimeSpan.FromMinutes(10)));
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
@@ -34,6 +36,7 @@ builder.Services.AddSingleton<DatabaseService>(new DatabaseService(connectionStr
 builder.Services.AddSingleton<IPackingRepository>(sp => sp.GetRequiredService<DatabaseService>());
 builder.Services.AddSingleton<IAdminRepository>(sp => sp.GetRequiredService<DatabaseService>());
 builder.Services.AddSingleton<ISnapshotRepository>(sp => sp.GetRequiredService<DatabaseService>());
+builder.Services.AddSingleton<ISessionRepository>(sp  => sp.GetRequiredService<DatabaseService>());
 builder.Services.AddScoped<PackingService>(sp =>
     new PackingService(sp.GetRequiredService<IPackingRepository>()));
 

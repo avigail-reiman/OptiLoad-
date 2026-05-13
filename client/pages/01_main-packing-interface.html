@@ -138,7 +138,11 @@ td input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:#58a6
       <h1>🚛 OptiLoad 3D</h1>
       <div class="sub">שיבוץ ארגזים אופטימלי בקונטיינרים</div>
     </div>
-    <button id="logout-btn" title="יציאה" style="background:#21262d;border:1px solid #30363d;border-radius:7px;color:#f85149;cursor:pointer;font-size:12px;padding:5px 10px;white-space:nowrap;flex-shrink:0;margin-top:2px">⬅ יציאה</button>
+    <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+      <button onclick="location.href='04_sessions-manager.html'" title="ניהול תוכניות שיבוץ" style="background:#21262d;border:1px solid #30363d;border-radius:7px;color:#58a6ff;cursor:pointer;font-size:11px;padding:5px 8px;white-space:nowrap">📋 תוכניות</button>
+      <button onclick="location.href='03_snapshot-viewer.html'" title="צפייה בתמונות שמירה" style="background:#21262d;border:1px solid #30363d;border-radius:7px;color:#3fb950;cursor:pointer;font-size:11px;padding:5px 8px;white-space:nowrap">📸 תמונות</button>
+      <button id="logout-btn" title="יציאה" style="background:#21262d;border:1px solid #30363d;border-radius:7px;color:#f85149;cursor:pointer;font-size:12px;padding:5px 10px;white-space:nowrap">⬅ יציאה</button>
+    </div>
   </div>
 
   <!-- Container -->
@@ -375,8 +379,48 @@ function getBoxRows() {
   });
 }
 
-// Populate demo data
-DEMO.forEach(b => addBoxRow(b));
+// ─── Session box loader ─────────────────────────────────────────
+const _urlSessionId = new URLSearchParams(location.search).get('sessionId');
+
+async function loadSessionBoxes(sessionId) {
+  try {
+    const r = await fetch(`http://localhost:5098/api/session/${sessionId}/boxes`,
+      { headers: getAuthHeaders() });
+    if (r.status === 401) { logout(); return; }
+    if (!r.ok) {
+      document.getElementById('boxes-tbody').innerHTML =
+        `<tr><td colspan="9" style="color:#f85149;text-align:center;padding:12px">שגיאה בטעינת ארגזי התוכנית (${r.status})</td></tr>`;
+      return;
+    }
+    const boxes = await r.json();
+    if (!boxes.length) {
+      document.getElementById('boxes-tbody').innerHTML =
+        `<tr><td colspan="9" style="color:#8b949e;text-align:center;padding:12px">אין ארגזים בתוכנית זו עדיין</td></tr>`;
+      return;
+    }
+    boxes.forEach(b => addBoxRow({
+      name:    b.boxName || 'Box',
+      w:       b.width,
+      h:       b.height,
+      d:       b.depth,
+      kg:      b.weightKg,
+      qty:     b.quantity,
+      fragile: b.isFragile,
+      rot:     b.allowRotation
+    }));
+    // מציג שם הסשן בכותרת
+    fetch(`http://localhost:5098/api/session/${sessionId}`, { headers: getAuthHeaders() })
+      .then(r2 => r2.ok ? r2.json() : null)
+      .then(s => { if (s) document.querySelector('#sidebar h1').textContent = '🚛 ' + s.name; });
+  } catch {
+    document.getElementById('boxes-tbody').innerHTML =
+      `<tr><td colspan="9" style="color:#f85149;text-align:center;padding:12px">לא ניתן להתחבר לשרת</td></tr>`;
+  }
+}
+
+if (!_urlSessionId) {
+  DEMO.forEach(b => addBoxRow(b));
+}
 
 // ─── Color palette ────────────────────────────────────────────────
 const PAL = [
@@ -743,7 +787,7 @@ async function saveSnapshotsToDb() {
   btn.disabled = false;
 }
 
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
   document.getElementById('btn-add-row').addEventListener('click', () => addBoxRow());
   document.getElementById('run-instant-btn').addEventListener('click', () => runPacking('instant'));
   document.getElementById('run-step-btn').addEventListener('click',    () => runPacking('step'));
@@ -755,7 +799,16 @@ window.addEventListener('load', () => {
     }
   });
   document.getElementById('save-snapshots-btn').addEventListener('click', saveSnapshotsToDb);
-  setTimeout(() => runPacking('instant'), 150);
+
+  if (_urlSessionId) {
+    await loadSessionBoxes(parseInt(_urlSessionId));
+    // מריץ אוטומטית רק אם נטענו ארגזים
+    if (document.querySelectorAll('#boxes-tbody tr td input').length > 0) {
+      setTimeout(() => runPacking('instant'), 150);
+    }
+  } else {
+    setTimeout(() => runPacking('instant'), 150);
+  }
 });
 </script>
 </body>

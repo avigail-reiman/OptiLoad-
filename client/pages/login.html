@@ -230,7 +230,7 @@ document.getElementById('login-form').addEventListener('submit', async e => {
     if (res.ok) {
       const data = await res.json();
       sessionStorage.setItem('optiload_token', data.token);
-      window.location.href = '01_main-packing-interface.html';
+      window.location.href = '04_sessions-manager.html';
     } else if (res.status === 401) {
       errEl.textContent = 'שם משתמש או סיסמה שגויים';
       errEl.classList.add('show');
@@ -251,7 +251,7 @@ document.getElementById('login-form').addEventListener('submit', async e => {
 
 // אם כבר מחובר — עבור ישירות
 if (sessionStorage.getItem('optiload_token'))
-  window.location.href = '01_main-packing-interface.html';
+  window.location.href = '04_sessions-manager.html';
 </script>
 </body>
 </html>
