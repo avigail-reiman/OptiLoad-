@@ -25,6 +25,7 @@ body{background:#0d1117;color:#e6edf3;font-family:'Segoe UI',Tahoma,sans-serif;o
 <body>
 <div id="panel">
   <h2>&#x1F69A; OptiLoad 3D</h2>
+  <button id="exportBtn" style="margin:10px 0 0 0;padding:7px 16px;border-radius:8px;background:#238636;color:#fff;border:none;cursor:pointer;font-size:13px">ייצוא נתונים ותמונות</button>
   <div class="stat"><span>&#x1F4E6; מכולות</span><span class="val" id="sb"></span></div>
   <div class="stat"><span>&#x1F4CA; ניצול נפח</span><span class="val" id="sv"></span></div>
   <div class="stat"><span>&#x2705; שובצו</span><span class="val" id="sp"></span></div>
@@ -37,6 +38,27 @@ body{background:#0d1117;color:#e6edf3;font-family:'Segoe UI',Tahoma,sans-serif;o
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../js/api.js"></script>
+// כפתור ייצוא
+document.getElementById('exportBtn').onclick = async function() {
+  try {
+    // נניח ש-id העבודה קיים ב-R.jobId או ב-URL
+    let jobId = R.jobId;
+    if (!jobId) {
+      // נסה לחלץ מה-URL
+      const m = window.location.search.match(/jobId=(\d+)/);
+      if (m) jobId = m[1];
+    }
+    if (!jobId) {
+      alert('לא נמצא מזהה עבודה לייצוא');
+      return;
+    }
+    await exportJob(jobId);
+    alert('הייצוא בוצע בהצלחה! קובץ JSON ותמונות נשמרו.');
+  } catch (e) {
+    alert('שגיאה בייצוא: ' + e.message);
+  }
+};
 <script>
 /*
  * NOTE: דף זה מיועד לתצוגה של תוצאת שיבוץ שמורה מה-DB.

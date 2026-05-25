@@ -54,6 +54,8 @@ public static class LoadingSequencer
             idx.Where(i => inDegree[i] == 0),
             Comparer<int>.Create((a, b) =>
             {
+                int cb = boxes[a].BinIndex.CompareTo(boxes[b].BinIndex);
+                if (cb != 0) return cb;
                 int cd = DepthCompare(boxes[a], boxes[b], face);
                 if (cd != 0) return cd;
                 int cy = boxes[a].Y1.CompareTo(boxes[b].Y1);

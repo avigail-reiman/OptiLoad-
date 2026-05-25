@@ -46,6 +46,46 @@ try
 
 PrintReport(result, container);
 
+            // ייצוא אוטומטי של תוצאות לאותו נתיב כמו ב-API
+            try
+            {
+                var outputDir = @"C:\Users\1\Desktop\תכנות\משובצות\תוצאות פרויקט שיבוץ לדאטאבייס";
+                if (!Directory.Exists(outputDir))
+                    Directory.CreateDirectory(outputDir);
+                var filePath = Path.Combine(outputDir, $"optiload-export-job{jobId}.json");
+
+                // יצירת אובייקט JSON בפורמט דומה ל-API
+                var export = new
+                {
+                    jobId = jobId,
+                    exportedAt = DateTime.UtcNow,
+                    totalBoxes = result.PlacedBoxes.Count,
+                    loadingSequence = result.PlacedBoxes.Select((pb, idx) => new {
+                        loadingStep = idx + 1,
+                        boxName = pb.Instance.BoxDefinition.BoxName,
+                        x = pb.X1,
+                        y = pb.Y1,
+                        z = pb.Z1,
+                        width = pb.Rotation.W,
+                        height = pb.Rotation.H,
+                        depth = pb.Rotation.D,
+                        binIndex = pb.BinIndex,
+                        isFragile = pb.Instance.BoxDefinition.IsFragile
+                    }).ToList(),
+                    // לא נוס תמונות כאן כי אין Snapshots ב-InMemory
+                    snapshots = new object[0]
+                };
+                var json = JsonSerializer.Serialize(export, new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+                System.IO.File.WriteAllText(filePath, json);
+            }
+            catch (Exception ex)
+            {
+                // אפשר להוסיף לוג או טיפול בשגיאה
+            }
             return result;
         }
 

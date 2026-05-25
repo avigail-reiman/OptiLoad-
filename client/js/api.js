@@ -1,3 +1,18 @@
+// ייצוא נתונים ותמונות לפי מזהה עבודה
+async function exportJob(jobId) {
+    const res = await fetch(`${API_BASE}/api/export/${jobId}`);
+    if (!res.ok) throw new Error('שגיאת ייצוא: ' + res.status);
+    // הורדת קובץ JSON
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `optiload-export-job${jobId}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+}
 // api.js – פונקציות תקשורת עם ה-API
 // ישמש כשהלוגיקה תועבר מקבצי ה-HTML לכאן
 

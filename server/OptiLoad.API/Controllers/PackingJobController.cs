@@ -47,6 +47,8 @@ namespace OptiLoad.API.Controllers
         [HttpPost("{id}/run")]
         public async Task<ActionResult<PackingResult>> Run(int id)
         {
+            var job = await _db.GetJobById(id);
+            if (job == null) return NotFound();
             var result = await _packingService.RunPackingJob(id);
             return Ok(result);
         }

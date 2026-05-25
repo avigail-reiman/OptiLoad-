@@ -35,6 +35,10 @@ namespace OptiLoad.API.Controllers
         [HttpPost]
         public async Task<ActionResult<int>> Create([FromBody] Box box)
         {
+            if (string.IsNullOrWhiteSpace(box.BoxName))
+                return BadRequest("BoxName is required.");
+            if (box.Width <= 0 || box.Height <= 0 || box.Depth <= 0)
+                return BadRequest("Width, Height and Depth must be greater than 0.");
             int newId = await _db.CreateBox(box);
             return CreatedAtAction(nameof(GetById), new { id = newId }, newId);
         }

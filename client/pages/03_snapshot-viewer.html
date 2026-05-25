@@ -100,8 +100,7 @@ header .sub{font-size:12px;color:#6e7681;margin-top:2px}
   <button class="btn" onclick="loadSnapshots()">טעינה</button>
   <button class="btn-secondary" onclick="loadAllJobs()">📋 כל העבודות</button>
   <div id="job-count"></div>
-  <button class="btn-secondary" id="compare-mode-btn" onclick="toggleCompareMode()" style="display:none">⚖️ מצב השוואה</button>
-  <button class="btn-secondary" id="slideshow-btn" onclick="startSlideshow()" style="display:none">▶ מצגת</button>
+  <button class="btn" id="export-btn" onclick="exportSnapshots()">📤 ייצוא קבצים</button>
 </div>
 
 <div id="status-bar">הכנס מספר עבודה ולחץ "טעינה".</div>
@@ -110,32 +109,17 @@ header .sub{font-size:12px;color:#6e7681;margin-top:2px}
 
 <!-- Compare Panel -->
 <div id="compare-panel">
-  <div class="compare-hint">בחרת <span id="selected-count">0</span> תמונות להשוואה</div>
-  <div class="compare-images" id="compare-images"></div>
-  <button class="compare-close" onclick="closeCompare()">סגור</button>
+  <!-- הוסרו פאנל השוואה -->
 </div>
 
 <!-- Slideshow Panel -->
 <div id="slideshow-panel">
-  <button class="ss-close" onclick="closeSlideshow()">✕</button>
-  <div class="ss-info">
-    <h2 id="ss-name">—</h2>
-    <p id="ss-step-label">—</p>
-  </div>
-  <img id="ss-image" src="" alt="">
-  <div class="ss-controls">
-    <button class="ss-btn" onclick="ssMove(-1)">◀ קודם</button>
-    <div id="ss-counter">—</div>
-    <button class="ss-btn" onclick="ssMove(1)">הבא ▶</button>
-  </div>
+  <!-- הוסרו פאנל מצגת -->
 </div>
 
 <script>
 const API = 'http://localhost:5098';
 let snapshots = [];
-let compareMode = false;
-let selected = [];
-let ssIndex = 0;
 
 // ── Auth ──
 function getToken() { return sessionStorage.getItem('optiload_token'); }
@@ -188,20 +172,15 @@ function renderGallery(data, jobId) {
   gallery.innerHTML = '';
   selected = [];
   compareMode = false;
-  document.getElementById('compare-mode-btn').textContent = '⚖️ מצב השוואה';
 
   if (!data.length) {
     empty.style.display = 'block';
     setStatus(`לא נמצאו תמונות לעבודה ${jobId}.`, 'err');
-    document.getElementById('compare-mode-btn').style.display = 'none';
-    document.getElementById('slideshow-btn').style.display = 'none';
     document.getElementById('job-count').textContent = '';
     return;
   }
 
   empty.style.display = 'none';
-  document.getElementById('compare-mode-btn').style.display = '';
-  document.getElementById('slideshow-btn').style.display = '';
   document.getElementById('job-count').textContent = `סה"כ: ${data.length} תמונות`;
   setStatus(`נטענו ${data.length} תמונות לעבודה ${jobId}.`, 'ok');
 
@@ -224,85 +203,35 @@ function renderGallery(data, jobId) {
 
 // ── Card click: compare mode vs slideshow ──
 function onCardClick(card, i) {
-  if (compareMode) {
-    const idx = selected.indexOf(i);
-    if (idx >= 0) {
-      selected.splice(idx, 1);
-      card.classList.remove('selected');
-    } else {
-      if (selected.length >= 2) {
-        // deselect first
-        const old = document.querySelector(`.card[data-index="${selected[0]}"]`);
-        if (old) old.classList.remove('selected');
-        selected.shift();
-      }
-      selected.push(i);
-      card.classList.add('selected');
-    }
-    if (selected.length === 2) showCompare();
-  } else {
-    ssIndex = i;
-    openSlideshow();
-  }
+  // אין מצב השוואה/מצגת – אפשר להוסיף כאן תצוגה מוגדלת בעתיד
 }
 
 // ── Compare ──
-function toggleCompareMode() {
-  compareMode = !compareMode;
-  selected = [];
-  document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
-  document.getElementById('compare-mode-btn').textContent = compareMode ? '✕ בטל השוואה' : '⚖️ מצב השוואה';
-  setStatus(compareMode ? 'בחרי 2 תמונות להשוואה.' : `${snapshots.length} תמונות.`, compareMode ? '' : 'ok');
-}
-
-function showCompare() {
-  const [a, b] = selected.map(i => snapshots[i]);
-  document.getElementById('selected-count').textContent = '2';
-  const container = document.getElementById('compare-images');
-  container.innerHTML = `
-    <div class="compare-col">
-      <div class="lbl">שלב ${a.loadingStep} — ${a.boxName || ''}</div>
-      <img src="data:image/jpeg;base64,${a.imageData}" alt="">
-    </div>
-    <div class="compare-col">
-      <div class="lbl">שלב ${b.loadingStep} — ${b.boxName || ''}</div>
-      <img src="data:image/jpeg;base64,${b.imageData}" alt="">
-    </div>`;
-  document.getElementById('compare-panel').classList.add('open');
-}
-
-function closeCompare() {
-  document.getElementById('compare-panel').classList.remove('open');
-}
+// הוסרו פונקציות השוואה
 
 // ── Slideshow ──
-function startSlideshow() { ssIndex = 0; openSlideshow(); }
-function openSlideshow() {
-  updateSS();
-  document.getElementById('slideshow-panel').classList.add('open');
+// הוסרו פונקציות מצגת
+// ── Export snapshots and data ──
+async function exportSnapshots() {
+  const jobId = parseInt(document.getElementById('job-id-input').value);
+  if (!jobId) { setStatus('נא להכניס מספר עבודה לייצוא.', 'err'); return; }
+  try {
+    const res = await fetch(`${API}/api/export/${jobId}`);
+    if (!res.ok) throw new Error('שגיאת ייצוא: ' + res.status);
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `optiload-export-job${jobId}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    setStatus('הייצוא בוצע בהצלחה! קובץ JSON ותמונות נשמרו.', 'ok');
+  } catch (e) {
+    setStatus('שגיאה בייצוא: ' + e.message, 'err');
+  }
 }
-function closeSlideshow() {
-  document.getElementById('slideshow-panel').classList.remove('open');
-}
-function ssMove(dir) {
-  ssIndex = Math.max(0, Math.min(snapshots.length - 1, ssIndex + dir));
-  updateSS();
-}
-function updateSS() {
-  const s = snapshots[ssIndex];
-  document.getElementById('ss-image').src = `data:image/jpeg;base64,${s.imageData}`;
-  document.getElementById('ss-name').textContent = s.boxName || '—';
-  document.getElementById('ss-step-label').textContent = `שלב ${s.loadingStep}`;
-  document.getElementById('ss-counter').textContent = `${ssIndex + 1} / ${snapshots.length}`;
-}
-
-// Keyboard navigation for slideshow
-document.addEventListener('keydown', e => {
-  if (!document.getElementById('slideshow-panel').classList.contains('open')) return;
-  if (e.key === 'ArrowRight' || e.key === 'ArrowUp') ssMove(-1);
-  if (e.key === 'ArrowLeft'  || e.key === 'ArrowDown') ssMove(1);
-  if (e.key === 'Escape') closeSlideshow();
-});
 
 // ── Helpers ──
 function setStatus(msg, type) {
