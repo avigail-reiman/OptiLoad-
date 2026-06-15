@@ -10,11 +10,7 @@ namespace OptiLoad.Data
 {
     public partial class DatabaseService : ISessionRepository
     {
-        // ═══════════════════════════════════════════════════════
-        // Sessions
-        // ═══════════════════════════════════════════════════════
-
-        public async Task<List<PackingSession>> GetSessionsByAdminAsync(int adminId)
+          public async Task<List<PackingSession>> GetSessionsByAdminAsync(int adminId)
         {
             var list = new List<PackingSession>();
             using var conn = new SqlConnection(_connectionString);
@@ -101,16 +97,11 @@ namespace OptiLoad.Data
                 await cmd.ExecuteNonQueryAsync();
             }
         }
-
-        // ═══════════════════════════════════════════════════════
-        // Session Users
-        // ═══════════════════════════════════════════════════════
-
         public async Task<SessionUser?> GetSessionUserByTokenAsync(string token)
         {
             using var conn = new SqlConnection(_connectionString);
             using var cmd  = new SqlCommand(
-                "SELECT SessionUserId, SessionId, DisplayName, Email, Token, CreatedAt " +
+                "SELECT SessionUserId, SessionId, DisplayName, Email, Token, RootToken, CreatedAt " +
                 "FROM SessionUser WHERE Token = @Token", conn);
             cmd.Parameters.AddWithValue("@Token", token);
             await conn.OpenAsync();
@@ -119,26 +110,54 @@ namespace OptiLoad.Data
             return MapSessionUser(rdr);
         }
 
-        public async Task<int> CreateSessionUserAsync(int sessionId, string displayName, string? email, string token)
+        public async Task<int> CreateSessionUserAsync(int sessionId, string displayName, string? email, string token, string? previousToken = null)
         {
+            // Determine root token: inherit from previous user's chain, or start a new chain
+            string rootToken = token; // default: this user is its own root
+            if (previousToken != null)
+            {
+                var prevRoot = await GetRootTokenAsync(previousToken);
+                if (prevRoot != null) rootToken = prevRoot;
+            }
+
             using var conn = new SqlConnection(_connectionString);
             using var cmd  = new SqlCommand(
-                "INSERT INTO SessionUser (SessionId, DisplayName, Email, Token, CreatedAt) " +
-                "VALUES (@SessionId, @DisplayName, @Email, @Token, @CreatedAt); " +
+                "INSERT INTO SessionUser (SessionId, DisplayName, Email, Token, RootToken, CreatedAt) " +
+                "VALUES (@SessionId, @DisplayName, @Email, @Token, @RootToken, @CreatedAt); " +
                 "SELECT SCOPE_IDENTITY();", conn);
             cmd.Parameters.AddWithValue("@SessionId",   sessionId);
             cmd.Parameters.AddWithValue("@DisplayName", displayName);
             cmd.Parameters.AddWithValue("@Email",       (object?)email ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@Token",       token);
+            cmd.Parameters.AddWithValue("@RootToken",   rootToken);
             cmd.Parameters.AddWithValue("@CreatedAt",   DateTime.UtcNow);
             await conn.OpenAsync();
             return Convert.ToInt32(await cmd.ExecuteScalarAsync());
         }
 
-        // ═══════════════════════════════════════════════════════
-        // Access Requests
-        // ═══════════════════════════════════════════════════════
+        public async Task<string?> GetRootTokenAsync(string userToken)
+        {
+            using var conn = new SqlConnection(_connectionString);
+            using var cmd  = new SqlCommand(
+                "SELECT RootToken FROM SessionUser WHERE Token = @Token", conn);
+            cmd.Parameters.AddWithValue("@Token", userToken);
+            await conn.OpenAsync();
+            var result = await cmd.ExecuteScalarAsync();
+            return result == DBNull.Value || result == null ? null : (string)result;
+        }
 
+        public async Task<int> GetDeniedCountInChainAsync(string rootToken, int sessionId)
+        {
+            using var conn = new SqlConnection(_connectionString);
+            using var cmd  = new SqlCommand(
+                "SELECT COUNT(*) FROM AccessRequest ar " +
+                "JOIN SessionUser su ON ar.SessionUserId = su.SessionUserId " +
+                "WHERE su.RootToken = @RootToken AND su.SessionId = @SessionId AND ar.Status = 'Denied'", conn);
+            cmd.Parameters.AddWithValue("@RootToken",  rootToken);
+            cmd.Parameters.AddWithValue("@SessionId",  sessionId);
+            await conn.OpenAsync();
+            return Convert.ToInt32(await cmd.ExecuteScalarAsync());
+        }
         public async Task<List<AccessRequest>> GetRequestsBySessionAsync(int sessionId)
         {
             var list = new List<AccessRequest>();
@@ -215,11 +234,6 @@ namespace OptiLoad.Data
             await conn.OpenAsync();
             await cmd.ExecuteNonQueryAsync();
         }
-
-        // ═══════════════════════════════════════════════════════
-        // Session Boxes
-        // ═══════════════════════════════════════════════════════
-
         public async Task<List<SessionBox>> GetSessionBoxesAsync(int sessionId)
         {
             var list = new List<SessionBox>();
@@ -282,10 +296,17 @@ namespace OptiLoad.Data
             return await cmd.ExecuteNonQueryAsync() > 0;
         }
 
-        // ═══════════════════════════════════════════════════════
-        // Audit Log
-        // ═══════════════════════════════════════════════════════
-
+        public async Task<bool> UpdateSessionBoxQuantityAsync(int sessionBoxId, int sessionId, int newQuantity)
+        {
+            using var conn = new SqlConnection(_connectionString);
+            using var cmd  = new SqlCommand(
+                "UPDATE SessionBox SET Quantity = @Quantity WHERE SessionBoxId = @SessionBoxId AND SessionId = @SessionId", conn);
+            cmd.Parameters.AddWithValue("@Quantity",     newQuantity);
+            cmd.Parameters.AddWithValue("@SessionBoxId", sessionBoxId);
+            cmd.Parameters.AddWithValue("@SessionId",    sessionId);
+            await conn.OpenAsync();
+            return await cmd.ExecuteNonQueryAsync() > 0;
+        }
         public async Task<List<BoxAuditLog>> GetAuditLogAsync(int sessionId)
         {
             var list = new List<BoxAuditLog>();
@@ -333,10 +354,6 @@ namespace OptiLoad.Data
             await cmd.ExecuteNonQueryAsync();
         }
 
-        // ═══════════════════════════════════════════════════════
-        // Private Mappers
-        // ═══════════════════════════════════════════════════════
-
         private static PackingSession MapSession(SqlDataReader r) => new()
         {
             SessionId   = r.GetInt32(0),
@@ -355,7 +372,8 @@ namespace OptiLoad.Data
             DisplayName   = r.GetString(2),
             Email         = r.IsDBNull(3) ? null : r.GetString(3),
             Token         = r.GetString(4),
-            CreatedAt     = r.GetDateTime(5)
+            RootToken     = r.GetString(5),
+            CreatedAt     = r.GetDateTime(6)
         };
 
         private static AccessRequest MapAccessRequest(SqlDataReader r) => new()

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>עץ מודולים — OptiLoad</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #676767;
+    font-family: Arial, sans-serif;
+  }
+
+  .page {
+    width: 190mm;
+    min-height: 277mm;
+    margin: 16px auto;
+    background: #ffffff;
+    padding: 9mm 7mm;
+    box-shadow: 0 2px 14px rgba(0,0,0,0.35);
+  }
+
+  h1 {
+    font-size: 17pt;
+    text-align: center;
+    margin-bottom: 6mm;
+    color: #0f172a;
+    border-bottom: 2px solid #1d4ed8;
+    padding-bottom: 3mm;
+  }
+
+  .mermaid {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .mermaid svg {
+    max-width: 100% !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+
+  @media print {
+    body { background: #ffffff; }
+    .page { width: 100%; margin: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <h1>עץ מודולים — OptiLoad Solution</h1>
+
+    <div class="mermaid">
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "background": "#ffffff",
+    "fontFamily": "Arial",
+    "fontSize": "16px",
+    "primaryColor": "#dbeafe",
+    "primaryTextColor": "#0f172a",
+    "primaryBorderColor": "#1d4ed8",
+    "secondaryColor": "#e2e8f0",
+    "tertiaryColor": "#dcfce7",
+    "lineColor": "#334155",
+    "edgeLabelBackground": "#ffffff"
+  },
+  "flowchart": {
+    "nodeSpacing": 36,
+    "rankSpacing": 48,
+    "padding": 18,
+    "useMaxWidth": true,
+    "curve": "linear"
+  }
+}}%%
+flowchart TB
+    SOL["OptiLoad Solution"]
+
+    SOL --> CORE["OptiLoad.Core\nDomain + Application\nללא תלויות חיצוניות"]
+    SOL --> DATA["OptiLoad.Data\nDatabaseService\nDatabaseSessionService"]
+    SOL --> API["OptiLoad.API\nControllers + Middleware + JWT"]
+    SOL --> TESTS["OptiLoad.Tests\nBox + BnB + Greedy + LowerBound"]
+    SOL --> CLIENT["client/\n6 דפי HTML\nCSS + JS + Three.js"]
+
+    CORE --> CORE_DOM["Domain\nModels + ComputationModels + Interfaces"]
+    CORE --> CORE_APP["Application\nAlgorithms + Services"]
+
+    CORE_DOM --> MODELS["Models:\nAdmin, Box, ContainerTemplate, PackingJob\nPackingJobBox, PlacementResult\nContainerSnapshot, PackingSession\nSessionUser, SessionBox"]
+    CORE_DOM --> COMP["ComputationModels:\nContainerDimensions, BoxInstance, Rotation\nPosition3D, PlacedBox, PackingState\nPackingResult, BinStats"]
+    CORE_DOM --> IFACES["Interfaces:\nIPackingRepository\nIAdminRepository\nISnapshotRepository\nISessionRepository"]
+
+    CORE_APP --> ALGOS["Algorithms:\nBranchAndBoundSolver, HeuristicH1, GreedySolver\nSingleBinFiller, CornerPointsFinder\nGravitySettler, LowerBoundCalculator\nLoadingSequencer"]
+    CORE_APP --> SVCS["Services:\nPackingService, AdminService, PasswordHasher"]
+
+    DATA --> DATA_IMPL["מימוש ממשקים מול SQL Server LocalDB\nADO.NET + Parameterized Queries"]
+    API --> API_CTRL["8 Controllers:\nAuth, Box, Container, PackingJob\nSnapshot, Session, Visualization, Export"]
+    API --> API_PROG["Program.cs:\nDI + Middleware + JWT\nLoginRateLimiter 3/15"]
+
+    classDef root fill:#bfdbfe,stroke:#1d4ed8,stroke-width:2.4px,color:#0f172a,font-size:17px;
+    classDef level1 fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#0f172a,font-size:16px;
+    classDef level2 fill:#e2e8f0,stroke:#475569,stroke-width:1.8px,color:#1e293b,font-size:15px;
+    classDef detail fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px,color:#334155,font-size:14px;
+
+    class SOL root;
+    class CORE,DATA,API,TESTS,CLIENT level1;
+    class CORE_DOM,CORE_APP,DATA_IMPL,API_CTRL,API_PROG level2;
+    class MODELS,COMP,IFACES,ALGOS,SVCS detail;
+    </div>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, securityLevel: "loose" });
+  </script>
+</body>
+</html>

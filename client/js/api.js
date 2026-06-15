@@ -16,7 +16,7 @@ async function exportJob(jobId) {
 // api.js – פונקציות תקשורת עם ה-API
 // ישמש כשהלוגיקה תועבר מקבצי ה-HTML לכאן
 
-const API_BASE = 'http://localhost:5098';
+const API_BASE = window.location.origin;
 
 async function runPacking(payload) {
     const res = await fetch(`${API_BASE}/api/visualization/run`, {

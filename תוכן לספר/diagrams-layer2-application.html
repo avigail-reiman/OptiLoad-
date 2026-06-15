@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>תרשים מחלקות – שכבת Application</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', Arial, sans-serif; padding: 24px; }
+  h1 { color: #3fb950; text-align: center; margin-bottom: 8px; }
+  h2 { color: #8b949e; text-align: center; font-size: 14px; margin-bottom: 32px; font-weight: normal; }
+  .layer-note { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 16px 24px; margin-bottom: 32px; font-size: 13px; color: #8b949e; }
+  .layer-note span { color: #e6edf3; font-weight: 600; }
+  .diagram-wrap { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 24px; margin-bottom: 32px; }
+  .diagram-title { color: #56d364; font-size: 15px; font-weight: 700; margin-bottom: 16px; border-bottom: 1px solid #21262d; padding-bottom: 8px; }
+</style>
+</head>
+<body>
+<h1>תרשים מחלקות — שכבת Application</h1>
+<h2>OptiLoad.Core / Application</h2>
+
+<div class="layer-note">
+  <span>שכבת Application</span> — לוגיקה עסקית ואלגוריתמים. תלויה ב-Domain בלבד.<br>
+  כוללת: <span>Services</span> (שירותי ליבה) ו-<span>Algorithms</span> (אלגוריתמי אריזה).
+</div>
+
+<div class="diagram-wrap">
+  <div class="diagram-title">🛠 שירותי ליבה (Services)</div>
+  <div class="mermaid">
+classDiagram
+  direction TB
+
+  class IAdminService {
+    &lt;&lt;interface&gt;&gt;
+    +AuthenticateAsync(string username, string password) Admin?
+    +SeedDefaultAdminIfEmptyAsync()
+  }
+
+  class AdminService {
+    -IAdminRepository _repo
+    -PasswordHasher _hasher
+    +AuthenticateAsync(string, string) Admin?
+    +SeedDefaultAdminIfEmptyAsync()
+  }
+
+  class PasswordHasher {
+    +HashPassword(string password) Tuple~string,string~
+    +Verify(string password, string hash, string salt) bool
+  }
+
+  class PackingService {
+    -IPackingRepository _repo
+    +RunJob(int jobId)
+  }
+
+  IAdminService <|.. AdminService : מממש
+  AdminService --> IAdminRepository : תלוי ב
+  AdminService --> PasswordHasher : משתמש ב
+  PackingService --> IPackingRepository : תלוי ב
+  PackingService --> BranchAndBoundSolver : מפעיל
+  </div>
+</div>
+
+<div class="diagram-wrap">
+  <div class="diagram-title">🧮 אלגוריתמי אריזה (Algorithms)</div>
+  <div class="mermaid">
+classDiagram
+  direction TB
+
+  class BranchAndBoundSolver {
+    +int MaxNodes = 10000000
+    +int TimeLimitSec = 300
+    -HeuristicH1 _heuristic
+    -LowerBoundCalculator _lbCalc
+    -GreedySolver _greedySolver
+    +Solve(ContainerDimensions dims, List~BoxInstance~ boxes) PackingResult
+  }
+
+  class HeuristicH1 {
+    -SingleBinFiller _filler
+    +Solve(ContainerDimensions dims, List~BoxInstance~ boxes) PackingResult
+    +TryOrder(List~BoxInstance~ boxes, string sortType) PackingResult
+  }
+
+  class SingleBinFiller {
+    +Fill(ContainerDimensions dims, List~BoxInstance~ boxes) List~PlacedBox~
+  }
+
+  class GreedySolver {
+    +Solve(ContainerDimensions dims, List~BoxInstance~ boxes) PackingResult
+  }
+
+  class CornerPointsFinder {
+    +FindCandidates(PackingState state, ContainerDimensions dims) List~Position3D~
+  }
+
+  class GravitySettler {
+    +Settle(PackingState state, ContainerDimensions dims)
+  }
+
+  class LowerBoundCalculator {
+    +L0(List~BoxInstance~ boxes, ContainerDimensions dims) int
+    +L1(List~BoxInstance~ boxes, ContainerDimensions dims) int
+    +L2(List~BoxInstance~ boxes, ContainerDimensions dims) int
+  }
+
+  class LoadingSequencer {
+    +Sequence(List~PlacedBox~ placed, string face) List~PlacedBox~
+  }
+
+  BranchAndBoundSolver --> HeuristicH1 : heuristic
+  BranchAndBoundSolver --> LowerBoundCalculator : חישוב חסם
+  BranchAndBoundSolver --> GreedySolver : fallback
+  BranchAndBoundSolver --> CornerPointsFinder : מועמדי מיקום
+  BranchAndBoundSolver --> GravitySettler : התייצבות
+  HeuristicH1 --> SingleBinFiller : ממלא מיכל
+  PackingService --> BranchAndBoundSolver : מריץ
+  PackingService --> LoadingSequencer : סדר טעינה
+  </div>
+</div>
+
+<div class="diagram-wrap">
+  <div class="diagram-title">🔄 זרימת ביצוע אלגוריתם</div>
+  <div class="mermaid">
+flowchart TD
+  PS[PackingService\nRunJob] --> BAB[BranchAndBoundSolver\nSolve]
+  BAB --> H1[HeuristicH1\nפתרון ראשוני]
+  H1 --> SBF[SingleBinFiller\nמילוי מיכל בודד]
+  BAB --> LB[LowerBoundCalculator\nL0 / L1 / L2]
+  BAB --> CPF[CornerPointsFinder\nנקודות פינה]
+  BAB --> GS[GravitySettler\nהתייצבות כבידה]
+  BAB -->|timeout / max nodes| GRD[GreedySolver\nפתרון חמדן]
+  BAB --> LS[LoadingSequencer\nסדר טעינה]
+  BAB --> PR[PackingResult]
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({ theme: 'dark', startOnLoad: true, themeVariables: {
+    primaryColor: '#1f2937', primaryTextColor: '#e6edf3',
+    primaryBorderColor: '#3fb950', lineColor: '#3fb950',
+    secondaryColor: '#161b22', tertiaryColor: '#0d1117'
+  }});
+</script>
+</body>
+</html>

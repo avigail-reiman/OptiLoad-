@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>תרשים מחלקות – שכבת API</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', Arial, sans-serif; padding: 24px; }
+  h1 { color: #e3b341; text-align: center; margin-bottom: 8px; }
+  h2 { color: #8b949e; text-align: center; font-size: 14px; margin-bottom: 32px; font-weight: normal; }
+  .layer-note { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 16px 24px; margin-bottom: 32px; font-size: 13px; color: #8b949e; }
+  .layer-note span { color: #e6edf3; font-weight: 600; }
+  .diagram-wrap { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 24px; margin-bottom: 32px; }
+  .diagram-title { color: #e3b341; font-size: 15px; font-weight: 700; margin-bottom: 16px; border-bottom: 1px solid #21262d; padding-bottom: 8px; }
+</style>
+</head>
+<body>
+<h1>תרשים מחלקות — שכבת API</h1>
+<h2>OptiLoad.API / Controllers · Services · DTOs</h2>
+
+<div class="layer-note">
+  <span>שכבת API (Presentation)</span> — ממשק HTTP בין הלקוח לשרת. מקבל בקשות, מבצע אימות JWT, ומעביר לשכבת Application.<br>
+  כוללת: <span>Controllers</span> (נקודות קצה REST), <span>Services</span> (LoginRateLimiter), <span>DTOs</span> (אובייקטי העברת נתונים).
+</div>
+
+<div class="diagram-wrap">
+  <div class="diagram-title">🎮 Controllers</div>
+  <div class="mermaid">
+classDiagram
+  direction TB
+
+  class ControllerBase {
+    &lt;&lt;ASP.NET Core&gt;&gt;
+  }
+
+  class AuthController {
+    -IAdminService _adminService
+    -LoginRateLimiter _rateLimiter
+    -IConfiguration _config
+    +POST /api/auth/login Login(LoginRequest)
+  }
+
+  class BoxController {
+    -IPackingRepository _db
+    +GET /api/boxes GetAll()
+    +GET /api/boxes/{id} GetById(int)
+    +POST /api/boxes Create(BoxRequest)
+    +PUT /api/boxes/{id} Update(int, BoxRequest)
+    +DELETE /api/boxes/{id} Delete(int)
+  }
+
+  class SessionController {
+    -ISessionRepository _sessions
+    -IPackingRepository _db
+    +GET /api/session GetMySessions()
+    +POST /api/session CreateSession(req)
+    +GET /api/session/{id} GetSession(int)
+    +PUT /api/session/{id}/status UpdateStatus(int,req)
+    +DELETE /api/session/{id} DeleteSession(int)
+    +GET /api/session/{id}/requests GetRequests(int)
+    +PUT /api/session/{id}/requests/{rid}/approve Approve(int,int)
+    +PUT /api/session/{id}/requests/{rid}/deny Deny(int,int)
+    +GET /api/session/{id}/boxes GetBoxes(int)
+    +POST /api/session/{id}/boxes AddBox(int,req)
+    +DELETE /api/session/{id}/boxes/{bid} DeleteBox(int,int)
+    +POST /api/session/{id}/boxes/custom AddCustomBox(int,req)
+    +GET /api/session/{id}/audit GetAuditLog(int)
+    +POST /api/session/link/{token}/join JoinSession(string,req)
+  }
+
+  class VisualizationController {
+    -PackingService _packingService
+    +POST /api/visualization/run RunVisualization(VisualizationRequest)
+  }
+
+  class SnapshotController {
+    -ISnapshotRepository _snapshots
+    +POST /api/snapshots/{jobId} SaveSnapshots(int, list)
+    +GET /api/snapshots/{jobId} GetSnapshots(int)
+    +DELETE /api/snapshots/{jobId} DeleteSnapshots(int)
+  }
+
+  class PackingJobController {
+    -IPackingRepository _db
+    +GET /api/jobs GetJobs()
+    +GET /api/jobs/{id} GetJob(int)
+    +POST /api/jobs CreateJob(req)
+  }
+
+  class ExportController {
+    -IPackingRepository _db
+    +GET /api/export/{jobId}/csv ExportCsv(int)
+    +GET /api/export/{jobId}/json ExportJson(int)
+  }
+
+  class ContainerController {
+    -IPackingRepository _db
+    +GET /api/containers GetAll()
+    +GET /api/containers/templates GetTemplates()
+    +POST /api/containers/templates CreateTemplate(req)
+  }
+
+  ControllerBase <|-- AuthController
+  ControllerBase <|-- BoxController
+  ControllerBase <|-- SessionController
+  ControllerBase <|-- VisualizationController
+  ControllerBase <|-- SnapshotController
+  ControllerBase <|-- PackingJobController
+  ControllerBase <|-- ExportController
+  ControllerBase <|-- ContainerController
+  </div>
+</div>
+
+<div class="diagram-wrap">
+  <div class="diagram-title">🔒 Services ו-DTOs</div>
+  <div class="mermaid">
+classDiagram
+  direction LR
+
+  class LoginRateLimiter {
+    -int MaxAttempts = 3
+    -TimeSpan LockoutDuration = 5min
+    -MemoryCache _cache
+    +IsLockedOut(string ip) bool
+    +RecordFailedAttempt(string ip)
+    +Reset(string ip)
+  }
+
+  class VisualizationRequest {
+    +ContainerDimensionsDto container
+    +List~BoxDto~ boxes
+    +int timeLimitSeconds
+    +string loadingFace
+  }
+
+  class ContainerDimensionsDto {
+    +double width
+    +double height
+    +double depth
+    +double maxWeightKg
+  }
+
+  class BoxDto {
+    +string name
+    +double w
+    +double h
+    +double d
+    +double weight
+    +int qty
+    +bool fragile
+    +bool allowRotation
+  }
+
+  AuthController --> LoginRateLimiter : משתמש ב
+  VisualizationController --> VisualizationRequest : מקבל
+  VisualizationRequest --> ContainerDimensionsDto : מכיל
+  VisualizationRequest --> BoxDto : מכיל רשימה
+  </div>
+</div>
+
+<div class="diagram-wrap">
+  <div class="diagram-title">🔗 תלויות Controllers בשכבות</div>
+  <div class="mermaid">
+flowchart LR
+  subgraph API["שכבת API"]
+    AC[AuthController]
+    BC[BoxController]
+    SC[SessionController]
+    VC[VisualizationController]
+    SnC[SnapshotController]
+    LRL[LoginRateLimiter]
+  end
+  subgraph APP["שכבת Application"]
+    AS[AdminService]
+    PS[PackingService]
+  end
+  subgraph DOMAIN["שכבת Domain"]
+    IAdm[IAdminRepository]
+    IPack[IPackingRepository]
+    ISess[ISessionRepository]
+    ISnap[ISnapshotRepository]
+  end
+
+  AC --> AS
+  AC --> LRL
+  BC --> IPack
+  SC --> ISess
+  SC --> IPack
+  VC --> PS
+  SnC --> ISnap
+  AS --> IAdm
+  PS --> IPack
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({ theme: 'dark', startOnLoad: true, themeVariables: {
+    primaryColor: '#1f2937', primaryTextColor: '#e6edf3',
+    primaryBorderColor: '#e3b341', lineColor: '#e3b341',
+    secondaryColor: '#161b22', tertiaryColor: '#0d1117'
+  }});
+</script>
+</body>
+</html>

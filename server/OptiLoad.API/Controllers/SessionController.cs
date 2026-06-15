@@ -4,6 +4,7 @@ using OptiLoad.Core.Models;
 using OptiLoad.Core.Services;
 using OptiLoad.Data;
 using System.Security.Claims;
+using System.Security.Cryptography;
 
 namespace OptiLoad.API.Controllers
 {
@@ -24,6 +25,14 @@ namespace OptiLoad.API.Controllers
 
         private int    GetAdminId()       => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         private string GetAdminUsername() => User.FindFirstValue(ClaimTypes.Name)!;
+
+        /// <summary>Generates a cryptographically random 36-char token (GUID-shaped).</summary>
+        private static string NewToken()
+        {
+            var bytes = new byte[16];
+            RandomNumberGenerator.Fill(bytes);
+            return new Guid(bytes).ToString();
+        }
 
         // Checks: valid session + (admin owner OR approved session-user)
         private async Task<(bool ok, IActionResult? err)> AuthorizeAccess(int sessionId)
@@ -93,7 +102,7 @@ namespace OptiLoad.API.Controllers
             if (req.Description?.Length > 500)
                 return BadRequest("Description must be 500 characters or fewer");
 
-            var linkToken = Guid.NewGuid().ToString();
+            var linkToken = NewToken();
             var id        = await _sessions.CreateSessionAsync(GetAdminId(), req.Name.Trim(), req.Description?.Trim(), linkToken);
             var session   = await _sessions.GetSessionByIdAsync(id);
             return CreatedAtAction(nameof(GetSession), new { id }, session);
@@ -165,9 +174,26 @@ namespace OptiLoad.API.Controllers
             if (session == null) return NotFound("Session not found");
             if (session.Status != "Open")  return BadRequest("Session is closed");
 
-            var userToken = Guid.NewGuid().ToString();
+            // ── DDoS / spam guard ────────────────────────────────────────────
+            if (req.PreviousToken != null)
+            {
+                var prevRequest = await _sessions.GetRequestByUserTokenAsync(req.PreviousToken);
+                if (prevRequest == null || prevRequest.SessionId != session.SessionId || prevRequest.Status != "Denied")
+                    return BadRequest("previousToken is invalid or does not belong to a denied request for this session.");
+
+                var rootToken    = await _sessions.GetRootTokenAsync(req.PreviousToken);
+                int deniedCount  = rootToken != null
+                    ? await _sessions.GetDeniedCountInChainAsync(rootToken, session.SessionId)
+                    : 0;
+
+                if (deniedCount >= 2)
+                    return StatusCode(429, "Too many denied requests. You are permanently blocked from this session.");
+            }
+
+            var userToken = NewToken();
             var userId    = await _sessions.CreateSessionUserAsync(
-                                session.SessionId, req.DisplayName.Trim(), req.Email?.Trim(), userToken);
+                                session.SessionId, req.DisplayName.Trim(), req.Email?.Trim(), userToken,
+                                req.PreviousToken);
             await _sessions.CreateAccessRequestAsync(session.SessionId, userId);
 
             return Ok(new { userToken, message = "Request submitted, waiting for admin approval" });
@@ -377,12 +403,45 @@ namespace OptiLoad.API.Controllers
             return Ok(new { sessionBoxId });
         }
 
+        /// <summary>עדכון כמות ארגז בתוכנית + רישום אודיט</summary>
+        [HttpPut("{id:int}/boxes/{sessionBoxId:int}")]
+        public async Task<IActionResult> UpdateBox(int id, int sessionBoxId, [FromBody] UpdateBoxRequest req)
+        {
+            var (ok, err, actor, actorType) = await AuthorizeAccessWithActor(id);
+            if (!ok) return err!;
+
+            if (req.Quantity <= 0) return BadRequest("Quantity must be positive");
+            if (req.Quantity > 10000) return BadRequest("Quantity is unreasonably large");
+
+            var boxes = await _sessions.GetSessionBoxesAsync(id);
+            var box   = boxes.FirstOrDefault(b => b.SessionBoxId == sessionBoxId);
+            if (box == null) return NotFound();
+
+            var updated = await _sessions.UpdateSessionBoxQuantityAsync(sessionBoxId, id, req.Quantity);
+            if (!updated) return NotFound();
+
+            await _sessions.AddAuditLogAsync(new BoxAuditLog
+            {
+                SessionId     = id,
+                Action        = "Updated",
+                BoxId         = box.BoxId,
+                BoxName       = box.BoxName ?? string.Empty,
+                Quantity      = req.Quantity,
+                ChangedBy     = actor!,
+                ChangedByType = actorType!,
+                ChangedAt     = DateTime.UtcNow
+            });
+
+            return NoContent();
+        }
+
         // ─── DTOs ─────────────────────────────────────────────────────────────
 
         public record CreateSessionRequest(string Name, string? Description);
-        public record JoinRequest(string DisplayName, string? Email);
+        public record JoinRequest(string DisplayName, string? Email, string? PreviousToken);
         public record AddBoxRequest(int BoxId, int Quantity);
         public record AddCustomBoxRequest(string BoxName, double Width, double Height, double Depth, double WeightKg, bool IsFragile, bool AllowRotation, int Quantity);
+        public record UpdateBoxRequest(int Quantity);
         public record UpdateStatusRequest(string Status);
     }
 }

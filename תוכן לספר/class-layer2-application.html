@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Class Diagram — Application Layer</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#666;font-family:Arial,sans-serif}
+  .page{width:277mm;background:#fff;margin:22px auto;padding:10mm 11mm;box-shadow:0 2px 18px rgba(0,0,0,.45)}
+  h2{font-size:15pt;color:#0f172a;text-align:center;border-bottom:2px solid #16a34a;padding-bottom:3mm;margin-bottom:2mm}
+  .subtitle{font-size:10pt;color:#475569;text-align:center;margin-bottom:4mm}
+  .sec{font-size:10pt;color:#16a34a;font-weight:bold;margin:5mm 0 2mm;border-right:3px solid #16a34a;padding-right:2mm;text-align:right}
+  .mermaid{width:100%;display:flex;justify-content:center;background:#fff}
+  .mermaid svg{max-width:100%!important;height:auto!important;background:#fff!important}
+  @media print{body{background:#fff}.page{margin:0;box-shadow:none;width:100%}}
+</style>
+</head>
+<body>
+<div class="page">
+  <h2>Application Layer — שירותים ואלגוריתמים</h2>
+  <p class="subtitle">OptiLoad.Core / Application</p>
+
+  <p class="sec">שירותי ליבה (Services)</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dcfce7","primaryTextColor":"#0f172a","primaryBorderColor":"#16a34a","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+  class IAdminService {
+    &lt;&lt;interface&gt;&gt;
+    AuthenticateAsync(string username, string password) Admin+
+    SeedDefaultAdminIfEmptyAsync()+
+  }
+  class AdminService {
+    IAdminRepository _repo-
+    PasswordHasher _hasher-
+    AuthenticateAsync(string, string) Admin+
+    SeedDefaultAdminIfEmptyAsync()+
+  }
+  class PasswordHasher {
+    HashPassword(string password) Tuple+
+    Verify(string password, string hash, string salt) bool+
+  }
+  class PackingService {
+    IPackingRepository _repo-
+    RunJob(int jobId)+
+  }
+  IAdminService <|.. AdminService : implements
+  AdminService --> IAdminRepository : depends on
+  AdminService --> PasswordHasher : uses
+  PackingService --> IPackingRepository : depends on
+  PackingService --> BranchAndBoundSolver : invokes
+  </div>
+
+  <p class="sec">אלגוריתמי אריזה (Algorithms)</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dcfce7","primaryTextColor":"#0f172a","primaryBorderColor":"#16a34a","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":12,"useMaxWidth":true}}}%%
+classDiagram
+  direction TB
+  class BranchAndBoundSolver {
+    int MaxNodes = 10000000+
+    int TimeLimitSec = 300+
+    HeuristicH1 _heuristic-
+    LowerBoundCalculator _lbCalc-
+    GreedySolver _greedySolver-
+    Solve(ContainerDimensions dims, List boxes) PackingResult+
+  }
+  class HeuristicH1 {
+    SingleBinFiller _filler-
+    Solve(ContainerDimensions, List) PackingResult+
+    TryOrder(List boxes, string sortType) PackingResult+
+  }
+  class SingleBinFiller {
+    Fill(ContainerDimensions, List) List+
+  }
+  class GreedySolver {
+    Solve(ContainerDimensions, List) PackingResult+
+  }
+  class CornerPointsFinder {
+    FindCandidates(PackingState state, ContainerDimensions dims) List+
+  }
+  class GravitySettler {
+    Settle(PackingState state, ContainerDimensions dims)+
+  }
+  class LowerBoundCalculator {
+    L0(List boxes, ContainerDimensions dims) int+
+    L1(List boxes, ContainerDimensions dims) int+
+    L2(List boxes, ContainerDimensions dims) int+
+  }
+  class LoadingSequencer {
+    Sequence(List placed, string face) List+
+  }
+  PackingService --> BranchAndBoundSolver : orchestrates
+  PackingService --> LoadingSequencer : uses
+  BranchAndBoundSolver --> HeuristicH1 : orchestrates
+  BranchAndBoundSolver --> GreedySolver : fallback
+  BranchAndBoundSolver --> CornerPointsFinder : uses
+  BranchAndBoundSolver --> GravitySettler : uses
+  BranchAndBoundSolver --> LowerBoundCalculator : uses
+  HeuristicH1 --> SingleBinFiller : uses
+  </div>
+</div>
+<script>mermaid.initialize({startOnLoad:true})</script>
+</body>
+</html>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#666;font-family:Arial,sans-serif}
+  .page{width:277mm;background:#fff;margin:22px auto;padding:10mm 11mm;box-shadow:0 2px 18px rgba(0,0,0,.45)}
+  h2{font-size:15pt;color:#0f172a;text-align:center;border-bottom:2px solid #16a34a;padding-bottom:3mm;margin-bottom:2mm}
+  .subtitle{font-size:10pt;color:#475569;text-align:center;margin-bottom:5mm}
+  .sec{font-size:10pt;color:#16a34a;font-weight:bold;margin:5mm 0 2mm;border-right:3px solid #16a34a;padding-right:2mm}
+  .mermaid{width:100%;display:flex;justify-content:center;background:#fff}
+  .mermaid svg{max-width:100%!important;height:auto!important;background:#fff!important}
+  @media print{body{background:#fff}.page{margin:0;box-shadow:none;width:100%}}
+</style>
+</head>
+<body>
+<div class="page">
+  <h2>Application Layer — שירותים ואלגוריתמים</h2>
+  <p class="subtitle">OptiLoad.Core / Application</p>
+
+  <p class="sec">שירותי ליבה</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dcfce7","primaryTextColor":"#0f172a","primaryBorderColor":"#16a34a","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+  class IAdminService {
+    &lt;&lt;interface&gt;&gt;
+    +AuthenticateAsync(string,string) Admin
+    +SeedDefaultAdminIfEmptyAsync()
+  }
+  class AdminService {
+    -IAdminRepository _repo
+    -PasswordHasher _hasher
+    +AuthenticateAsync(string,string) Admin
+    +SeedDefaultAdminIfEmptyAsync()
+  }
+  class PasswordHasher {
+    +HashPassword(string) Tuple
+    +Verify(string,string,string) bool
+  }
+  class PackingService {
+    -IPackingRepository _repo
+    +RunJob(int jobId)
+  }
+  IAdminService <|.. AdminService : implements
+  AdminService --> IAdminRepository : depends on
+  AdminService --> PasswordHasher : uses
+  PackingService --> IPackingRepository : depends on
+  PackingService --> BranchAndBoundSolver : orchestrates
+  </div>
+
+  <p class="sec">אלגוריתמי אריזה</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dcfce7","primaryTextColor":"#0f172a","primaryBorderColor":"#16a34a","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":12,"useMaxWidth":true}}}%%
+classDiagram
+  direction TB
+  class BranchAndBoundSolver {
+    +int MaxNodes = 10000000
+    +int TimeLimitSec = 300
+    -HeuristicH1 _heuristic
+    -LowerBoundCalculator _lbCalc
+    -GreedySolver _greedySolver
+    +Solve(dims, boxes) PackingResult
+  }
+  class HeuristicH1 {
+    -SingleBinFiller _filler
+    +Solve(dims, boxes) PackingResult
+    +TryOrder(boxes, sortType) PackingResult
+  }
+  class SingleBinFiller {
+    +Fill(dims, boxes) List
+  }
+  class GreedySolver {
+    +Solve(dims, boxes) PackingResult
+  }
+  class CornerPointsFinder {
+    +FindCandidates(state, dims) List
+  }
+  class GravitySettler {
+    +Settle(state, dims)
+  }
+  class LowerBoundCalculator {
+    +L0(boxes, dims) int
+    +L1(boxes, dims) int
+    +L2(boxes, dims) int
+  }
+  class LoadingSequencer {
+    +Sequence(placed, face) List
+  }
+  BranchAndBoundSolver --> HeuristicH1 : orchestrates
+  BranchAndBoundSolver --> LowerBoundCalculator : uses
+  BranchAndBoundSolver --> GreedySolver : fallback
+  BranchAndBoundSolver --> CornerPointsFinder : uses
+  BranchAndBoundSolver --> GravitySettler : uses
+  HeuristicH1 --> SingleBinFiller : uses
+  PackingService --> LoadingSequencer : uses
+  </div>
+</div>
+<script>mermaid.initialize({startOnLoad:true})</script>
+</body>
+</html>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #666; font-family: Arial, sans-serif; }
+  .page {
+    width: 277mm;
+    background: #ffffff;
+    margin: 22px auto;
+    padding: 10mm 11mm;
+    box-shadow: 0 2px 18px rgba(0,0,0,0.45);
+  }
+  h2 {
+    font-size: 15pt;
+    color: #0f172a;
+    text-align: center;
+    border-bottom: 2px solid #16a34a;
+    padding-bottom: 3mm;
+    margin-bottom: 5mm;
+  }
+  .subtitle {
+    font-size: 10pt;
+    color: #475569;
+    text-align: center;
+    margin-bottom: 5mm;
+    margin-top: -3mm;
+  }
+  .section-title {
+    font-size: 11pt;
+    color: #16a34a;
+    font-weight: bold;
+    margin: 6mm 0 3mm 0;
+    border-right: 4px solid #16a34a;
+    padding-right: 3mm;
+  }
+  .mermaid {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    background: #ffffff;
+  }
+  .mermaid svg {
+    max-width: 100% !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; box-shadow: none; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <h2>תרשים מחלקות — שכבת Application</h2>
+  <p class="subtitle">OptiLoad.Core / Application — שירותים ואלגוריתמים | תלויה ב-Domain בלבד</p>
+
+  <p class="section-title">שירותי ליבה (Services)</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dcfce7","primaryTextColor":"#0f172a","primaryBorderColor":"#16a34a","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":12,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+
+  class IAdminService {
+    &lt;&lt;interface&gt;&gt;
+    +AuthenticateAsync(string username, string password) Admin
+    +SeedDefaultAdminIfEmptyAsync()
+  }
+
+  class AdminService {
+    -IAdminRepository _repo
+    -PasswordHasher _hasher
+    +AuthenticateAsync(string, string) Admin
+    +SeedDefaultAdminIfEmptyAsync()
+  }
+
+  class PasswordHasher {
+    +HashPassword(string password) Tuple
+    +Verify(string password, string hash, string salt) bool
+  }
+
+  class PackingService {
+    -IPackingRepository _repo
+    +RunJob(int jobId)
+  }
+
+  IAdminService <|.. AdminService : implements
+  AdminService --> IAdminRepository : depends on
+  AdminService --> PasswordHasher : uses
+  PackingService --> IPackingRepository : depends on
+  PackingService --> BranchAndBoundSolver : invokes
+  </div>
+
+  <p class="section-title">אלגוריתמי אריזה (Algorithms)</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dcfce7","primaryTextColor":"#0f172a","primaryBorderColor":"#16a34a","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":14,"useMaxWidth":true}}}%%
+classDiagram
+  direction TB
+
+  class BranchAndBoundSolver {
+    +int MaxNodes = 10000000
+    +int TimeLimitSec = 300
+    -HeuristicH1 _heuristic
+    -LowerBoundCalculator _lbCalc
+    -GreedySolver _greedySolver
+    +Solve(ContainerDimensions dims, List boxes) PackingResult
+  }
+
+  class HeuristicH1 {
+    -SingleBinFiller _filler
+    +Solve(ContainerDimensions, List) PackingResult
+    +TryOrder(List boxes, string sortType) PackingResult
+  }
+
+  class SingleBinFiller {
+    +Fill(ContainerDimensions, List) List
+  }
+
+  class GreedySolver {
+    +Solve(ContainerDimensions, List) PackingResult
+  }
+
+  class CornerPointsFinder {
+    +FindCandidates(PackingState state, ContainerDimensions dims) List
+  }
+
+  class GravitySettler {
+    +Settle(PackingState state, ContainerDimensions dims)
+  }
+
+  class LowerBoundCalculator {
+    +L0(List boxes, ContainerDimensions dims) int
+    +L1(List boxes, ContainerDimensions dims) int
+    +L2(List boxes, ContainerDimensions dims) int
+  }
+
+  class LoadingSequencer {
+    +Sequence(List placed, string face) List
+  }
+
+  BranchAndBoundSolver --> HeuristicH1 : orchestrates
+  BranchAndBoundSolver --> LowerBoundCalculator : uses
+  BranchAndBoundSolver --> GreedySolver : fallback
+  BranchAndBoundSolver --> CornerPointsFinder : uses
+  BranchAndBoundSolver --> GravitySettler : uses
+  HeuristicH1 --> SingleBinFiller : uses
+  PackingService --> BranchAndBoundSolver : orchestrates
+  PackingService --> LoadingSequencer : uses
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true });
+</script>
+</body>
+</html>

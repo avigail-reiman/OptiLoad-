@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Class Diagrams — OptiLoad 15.10 / 15.11</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #666; font-family: Arial, sans-serif; }
+
+  .page {
+    width: 277mm;
+    background: #ffffff;
+    margin: 22px auto;
+    padding: 10mm 11mm;
+    box-shadow: 0 2px 18px rgba(0,0,0,0.45);
+  }
+
+  h2 {
+    font-size: 15pt;
+    color: #0f172a;
+    text-align: center;
+    border-bottom: 2px solid #1d4ed8;
+    padding-bottom: 3mm;
+    margin-bottom: 5mm;
+  }
+
+  .subtitle {
+    font-size: 10pt;
+    color: #475569;
+    text-align: center;
+    margin-bottom: 5mm;
+    margin-top: -3mm;
+  }
+
+  .mermaid {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    background: #ffffff;
+  }
+
+  .mermaid svg {
+    max-width: 100% !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; box-shadow: none; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 1 — 15.10 Design Class Diagram (Domain Models)
+     ═══════════════════════════════════════════════ -->
+<div class="page">
+  <h2>15.10 Design Class Diagram — מודלי הדומיין</h2>
+  <p class="subtitle">קשרים בין ישויות הליבה של המערכת · OptiLoad.Core / Domain</p>
+  <div class="mermaid">
+%%{init:{
+  "theme":"base",
+  "themeVariables":{
+    "background":"#ffffff",
+    "primaryColor":"#dbeafe",
+    "primaryTextColor":"#0f172a",
+    "primaryBorderColor":"#1d4ed8",
+    "lineColor":"#334155",
+    "secondaryColor":"#dcfce7",
+    "tertiaryColor":"#fef9c3",
+    "fontFamily":"Arial",
+    "fontSize":"13px",
+    "classText":"#0f172a"
+  },
+  "classDiagram":{"diagramPadding":12,"useMaxWidth":true}
+}}%%
+classDiagram
+  direction LR
+
+  class Admin {
+    +int Id
+    +string Username
+    +string PasswordHash
+    +string PasswordSalt
+    +DateTime CreatedAt
+  }
+
+  class Box {
+    +int Id
+    +int AdminId
+    +string BoxName
+    +double Width
+    +double Height
+    +double Depth
+    +double WeightKg
+    +bool IsFragile
+    +bool AllowRotation
+    +GetAllowedRotations() List
+  }
+
+  class ContainerTemplate {
+    +int Id
+    +int AdminId
+    +string Name
+    +double Width
+    +double Height
+    +double Depth
+    +double MaxWeightKg
+  }
+
+  class PackingJob {
+    +int Id
+    +int AdminId
+    +int ContainerId
+    +string JobName
+    +JobStatus Status
+    +int BinsUsed
+    +double VolumeUtilization
+    +bool IsOptimal
+    +double SolveTimeSeconds
+  }
+
+  class PackingJobBox {
+    +int JobId
+    +int BoxId
+    +int Quantity
+  }
+
+  class PlacementResult {
+    +int Id
+    +int JobId
+    +int BoxId
+    +int InstanceIndex
+    +int BinIndex
+    +double PosX
+    +double PosY
+    +double PosZ
+    +int RotationIndex
+    +int LoadOrder
+  }
+
+  class ContainerSnapshot {
+    +int Id
+    +int JobId
+    +string SnapshotData
+    +DateTime CreatedAt
+  }
+
+  class PackingSession {
+    +int Id
+    +int AdminId
+    +string LinkToken
+    +string Name
+    +DateTime CreatedAt
+    +SessionStatus Status
+  }
+
+  class SessionUser {
+    +int Id
+    +int SessionId
+    +string DeviceInfo
+    +DateTime JoinedAt
+  }
+
+  class SessionBox {
+    +int Id
+    +int SessionId
+    +int BoxId
+    +string Status
+  }
+
+  Admin "1" --> "*" Box : owns
+  Admin "1" --> "*" ContainerTemplate : defines
+  Admin "1" --> "*" PackingJob : creates
+  Admin "1" --> "*" PackingSession : manages
+
+  PackingJob "1" --> "*" PackingJobBox : contains
+  Box "1" --> "*" PackingJobBox : referenced by
+  PackingJob "1" --> "*" PlacementResult : produces
+  PackingJob "1" --> "0..1" ContainerSnapshot : has snapshot
+  PackingJob "1" --> "0..1" PackingSession : linked to
+
+  PackingSession "1" --> "*" SessionUser : joined by
+  PackingSession "1" --> "*" SessionBox : tracks
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 2 — 15.11 Class Diagram (Algorithms + Interfaces)
+     ═══════════════════════════════════════════════ -->
+<div class="page">
+  <h2>15.11 Class Diagram — אלגוריתמים, שירותים וממשקי גישה לנתונים</h2>
+  <p class="subtitle">OptiLoad.Core / Application + OptiLoad.Data</p>
+  <div class="mermaid">
+%%{init:{
+  "theme":"base",
+  "themeVariables":{
+    "background":"#ffffff",
+    "primaryColor":"#dbeafe",
+    "primaryTextColor":"#0f172a",
+    "primaryBorderColor":"#1d4ed8",
+    "lineColor":"#334155",
+    "secondaryColor":"#dcfce7",
+    "tertiaryColor":"#fef9c3",
+    "fontFamily":"Arial",
+    "fontSize":"13px",
+    "classText":"#0f172a"
+  },
+  "classDiagram":{"diagramPadding":12,"useMaxWidth":true}
+}}%%
+classDiagram
+  direction LR
+
+  class BranchAndBoundSolver {
+    +int MaxNodes = 10000000
+    +int TimeLimitSec = 300
+    -HeuristicH1 heuristic
+    -LowerBoundCalculator lbCalc
+    -GreedySolver greedySolver
+    +PackingResult Solve(dims, boxes)
+  }
+
+  class HeuristicH1 {
+    +PackingResult Solve(dims, boxes)
+    -TryOrder(boxes, sortType) result
+  }
+
+  class GreedySolver {
+    +PackingResult Solve(dims, boxes)
+  }
+
+  class SingleBinFiller {
+    +List Fill(dims, boxes)
+  }
+
+  class CornerPointsFinder {
+    +List FindCandidates(state, dims)
+  }
+
+  class GravitySettler {
+    +void Settle(state, dims)
+  }
+
+  class LowerBoundCalculator {
+    +int L0(boxes, dims)
+    +int L1(boxes, dims)
+    +int L2(boxes, dims)
+  }
+
+  class LoadingSequencer {
+    +List Sequence(placed, face)
+  }
+
+  class PackingService {
+    -IPackingRepository repo
+    +void RunJob(jobId)
+  }
+
+  class AdminService {
+    -IAdminRepository repo
+    -PasswordHasher hasher
+    +Admin GetAdmin(username)
+    +bool Verify(password, hash, salt)
+  }
+
+  class PasswordHasher {
+    +Tuple HashPassword(password)
+    +bool Verify(password, hash, salt)
+  }
+
+  class IPackingRepository {
+    +GetBoxes(adminId) List
+    +GetJob(jobId) PackingJob
+    +SavePlacements(results)
+    +UpdateJobStatus(jobId, status)
+  }
+
+  class IAdminRepository {
+    +GetAdmin(username) Admin
+    +CreateAdmin(admin)
+    +UpdateAdmin(admin)
+  }
+
+  class ISnapshotRepository {
+    +SaveSnapshot(snapshot)
+    +GetSnapshot(jobId) Snapshot
+  }
+
+  class ISessionRepository {
+    +CreateSession(session) Session
+    +GetSession(token) Session
+    +AddUser(sessionId, user)
+    +GetBoxes(sessionId) List
+  }
+
+  class DatabaseService {
+    -string ConnectionString
+    +GetBoxes(adminId) List
+    +GetJob(jobId) PackingJob
+    +SavePlacements(results)
+    +GetAdmin(username) Admin
+    +SaveSnapshot(snapshot)
+  }
+
+  class DatabaseSessionService {
+    -string ConnectionString
+    +CreateSession(session) Session
+    +GetSession(token) Session
+    +AddUser(sessionId, user)
+  }
+
+  BranchAndBoundSolver --> HeuristicH1 : uses
+  BranchAndBoundSolver --> LowerBoundCalculator : uses
+  BranchAndBoundSolver --> GreedySolver : fallback
+  BranchAndBoundSolver --> CornerPointsFinder : uses
+  BranchAndBoundSolver --> GravitySettler : uses
+  BranchAndBoundSolver --> LoadingSequencer : uses
+  HeuristicH1 --> SingleBinFiller : uses
+
+  PackingService --> BranchAndBoundSolver : orchestrates
+  PackingService --> IPackingRepository : depends on
+  AdminService --> IAdminRepository : depends on
+  AdminService --> PasswordHasher : uses
+
+  DatabaseService ..|> IPackingRepository : implements
+  DatabaseService ..|> IAdminRepository : implements
+  DatabaseService ..|> ISnapshotRepository : implements
+  DatabaseSessionService ..|> ISessionRepository : implements
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "loose"
+  });
+</script>
+</body>
+</html>

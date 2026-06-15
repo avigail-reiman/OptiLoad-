@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>עצי מודולים — OptiLoad</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #676767;
+    font-family: Arial, sans-serif;
+  }
+
+  .page {
+    width: 190mm;
+    min-height: 277mm;
+    margin: 16px auto;
+    background: #ffffff;
+    padding: 9mm 7mm;
+    box-shadow: 0 2px 14px rgba(0,0,0,0.35);
+  }
+
+  h1 {
+    font-size: 17pt;
+    text-align: center;
+    margin-bottom: 4mm;
+    color: #0f172a;
+    border-bottom: 2px solid #1d4ed8;
+    padding-bottom: 3mm;
+  }
+
+  .subtitle {
+    font-size: 11pt;
+    text-align: center;
+    color: #475569;
+    margin-bottom: 6mm;
+  }
+
+  .mermaid {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .mermaid svg {
+    max-width: 100% !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+
+  @media print {
+    body { background: #ffffff; }
+    .page { width: 100%; margin: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- עץ 1 -->
+  <div class="page">
+    <h1>עץ 1 — מבנה הפתרון</h1>
+    <div class="subtitle">5 פרויקטים וכיוון התלויות ביניהם</div>
+    <div class="mermaid">
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "background": "#ffffff",
+    "fontFamily": "Arial",
+    "fontSize": "16px",
+    "primaryColor": "#dbeafe",
+    "primaryTextColor": "#0f172a",
+    "primaryBorderColor": "#1d4ed8",
+    "secondaryColor": "#e2e8f0",
+    "lineColor": "#334155",
+    "edgeLabelBackground": "#ffffff"
+  },
+  "flowchart": { "nodeSpacing": 36, "rankSpacing": 48, "padding": 18, "useMaxWidth": true, "curve": "linear" }
+}}%%
+flowchart TB
+    SOL["OptiLoad Solution"]
+
+    SOL --> CORE["OptiLoad.Core\nלוגיקה עסקית\nללא תלויות חיצוניות"]
+    SOL --> DATA["OptiLoad.Data\nגישה למסד נתונים\n← תלוי ב-Core"]
+    SOL --> API["OptiLoad.API\nשכבת HTTP\n← תלוי ב-Core + Data"]
+    SOL --> TESTS["OptiLoad.Tests\nבדיקות יחידה\n← תלוי ב-Core"]
+    SOL --> CLIENT["client/\nממשק משתמש\nHTML + JS + Three.js"]
+
+    classDef root fill:#bfdbfe,stroke:#1d4ed8,stroke-width:2.4px,color:#0f172a,font-size:17px;
+    classDef level1 fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#0f172a,font-size:16px;
+    class SOL root;
+    class CORE,DATA,API,TESTS,CLIENT level1;
+    </div>
+  </div>
+
+  <!-- עץ 2 -->
+  <div class="page">
+    <h1>עץ 2 — שכבת הדומיין</h1>
+    <div class="subtitle">כל המודלים והממשקים בתוך OptiLoad.Core.Domain</div>
+    <div class="mermaid">
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "background": "#ffffff",
+    "fontFamily": "Arial",
+    "fontSize": "16px",
+    "primaryColor": "#dbeafe",
+    "primaryTextColor": "#0f172a",
+    "primaryBorderColor": "#1d4ed8",
+    "secondaryColor": "#e2e8f0",
+    "lineColor": "#334155",
+    "edgeLabelBackground": "#ffffff"
+  },
+  "flowchart": { "nodeSpacing": 36, "rankSpacing": 48, "padding": 18, "useMaxWidth": true, "curve": "linear" }
+}}%%
+flowchart TB
+    DOM["OptiLoad.Core\nDomain"]
+
+    DOM --> ENT["Entity Models\nמודלי DB — נשמרים במסד"]
+    DOM --> CALC["Computation Models\nמודלי חישוב — בזיכרון בלבד"]
+    DOM --> IFACES["Repository Interfaces\nחוזים לגישה לנתונים"]
+
+    ENT --> E1["Admin\nBox\nContainerTemplate"]
+    ENT --> E2["PackingJob · PackingJobBox\nPlacementResult"]
+    ENT --> E3["ContainerSnapshot\nPackingSession\nSessionUser · SessionBox"]
+
+    CALC --> C1["ContainerDimensions\nBoxInstance · Rotation\nPosition3D"]
+    CALC --> C2["PlacedBox · PackingState\nPackingResult · BinStats"]
+
+    IFACES --> I1["IPackingRepository\nIAdminRepository"]
+    IFACES --> I2["ISnapshotRepository\nISessionRepository"]
+
+    classDef root fill:#bfdbfe,stroke:#1d4ed8,stroke-width:2.4px,color:#0f172a,font-size:17px;
+    classDef level1 fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#0f172a,font-size:16px;
+    classDef level2 fill:#e2e8f0,stroke:#475569,stroke-width:1.8px,color:#1e293b,font-size:15px;
+    classDef detail fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px,color:#334155,font-size:14px;
+    class DOM root;
+    class ENT,CALC,IFACES level1;
+    class E1,E2,E3,C1,C2,I1,I2 detail;
+    </div>
+  </div>
+
+  <!-- עץ 3 -->
+  <div class="page">
+    <h1>עץ 3 — שכבת האלגוריתמים</h1>
+    <div class="subtitle">היררכיית קריאות בין האלגוריתמים והשירותים ב-OptiLoad.Core.Application</div>
+    <div class="mermaid">
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "background": "#ffffff",
+    "fontFamily": "Arial",
+    "fontSize": "16px",
+    "primaryColor": "#dbeafe",
+    "primaryTextColor": "#0f172a",
+    "primaryBorderColor": "#1d4ed8",
+    "secondaryColor": "#e2e8f0",
+    "lineColor": "#334155",
+    "edgeLabelBackground": "#ffffff"
+  },
+  "flowchart": { "nodeSpacing": 36, "rankSpacing": 48, "padding": 18, "useMaxWidth": true, "curve": "linear" }
+}}%%
+flowchart TB
+    APP["OptiLoad.Core\nApplication"]
+
+    APP --> SOLVERS["Solvers\nאלגוריתמי ארוז"]
+    APP --> HELPERS["Helpers\nרכיבי עזר"]
+    APP --> SVCS["Services\nשירותים עסקיים"]
+
+    SOLVERS --> BNB["BranchAndBoundSolver\nחיפוש מדויק + גיזום"]
+    SOLVERS --> GREEDY["GreedySolver\nאלגוריתם חמדני"]
+    SOLVERS --> H1["HeuristicH1\nהיוריסטיקה מהירה"]
+
+    BNB --> LB["LowerBoundCalculator\nL0 · L1 · L2"]
+    BNB --> SBF["SingleBinFiller\nמילוי מכולה בודדת"]
+    GREEDY --> SBF
+    H1 --> SBF
+
+    HELPERS --> CPF["CornerPointsFinder\nנקודות פינה חוקיות"]
+    HELPERS --> GS["GravitySettler\nיציבות פיזיקלית"]
+    HELPERS --> LS["LoadingSequencer\nסדר הוצאת קופסאות"]
+    SBF --> CPF
+    SBF --> GS
+
+    SVCS --> PS["PackingService\nתיאום ריצת אלגוריתם"]
+    SVCS --> AS["AdminService\nניהול משתמשים"]
+    SVCS --> PH["PasswordHasher\nגיבוב סיסמאות"]
+    AS --> PH
+
+    classDef root fill:#bfdbfe,stroke:#1d4ed8,stroke-width:2.4px,color:#0f172a,font-size:17px;
+    classDef level1 fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#0f172a,font-size:16px;
+    classDef level2 fill:#e2e8f0,stroke:#475569,stroke-width:1.8px,color:#1e293b,font-size:15px;
+    classDef detail fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px,color:#334155,font-size:14px;
+    class APP root;
+    class SOLVERS,HELPERS,SVCS level1;
+    class BNB,GREEDY,H1,PS,AS level2;
+    class LB,SBF,CPF,GS,LS,PH detail;
+    </div>
+  </div>
+
+  <!-- עץ 4 -->
+  <div class="page">
+    <h1>עץ 4 — API, נתונים ולקוח</h1>
+    <div class="subtitle">Controllers, גישה ל-DB, ודפי הלקוח</div>
+    <div class="mermaid">
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "background": "#ffffff",
+    "fontFamily": "Arial",
+    "fontSize": "16px",
+    "primaryColor": "#dbeafe",
+    "primaryTextColor": "#0f172a",
+    "primaryBorderColor": "#1d4ed8",
+    "secondaryColor": "#e2e8f0",
+    "lineColor": "#334155",
+    "edgeLabelBackground": "#ffffff"
+  },
+  "flowchart": { "nodeSpacing": 36, "rankSpacing": 48, "padding": 18, "useMaxWidth": true, "curve": "linear" }
+}}%%
+flowchart TB
+    OUTER["שכבות חיצוניות"]
+
+    OUTER --> API["OptiLoad.API"]
+    OUTER --> DATA["OptiLoad.Data"]
+    OUTER --> CLI["client/"]
+
+    API --> PROG["Program.cs\nDI · JWT · CORS\nLoginRateLimiter"]
+    API --> CTRL["8 Controllers"]
+
+    CTRL --> C1["AuthController\nלוגין · רישום"]
+    CTRL --> C2["BoxController\nContainerController"]
+    CTRL --> C3["PackingJobController\nSnapshotController"]
+    CTRL --> C4["SessionController\nVisualizationController\nExportController"]
+
+    DATA --> DB["DatabaseService\nADO.NET · SQL Server LocalDB\nParameterized Queries"]
+
+    CLI --> P1["login.html\n01 ממשק ארוז ראשי"]
+    CLI --> P2["02 צופה תלת-ממדי\n03 צופה Snapshots"]
+    CLI --> P3["04 מנהל Sessions\n05 הצטרפות משתמש"]
+
+    classDef root fill:#bfdbfe,stroke:#1d4ed8,stroke-width:2.4px,color:#0f172a,font-size:17px;
+    classDef level1 fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#0f172a,font-size:16px;
+    classDef level2 fill:#e2e8f0,stroke:#475569,stroke-width:1.8px,color:#1e293b,font-size:15px;
+    classDef detail fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px,color:#334155,font-size:14px;
+    class OUTER root;
+    class API,DATA,CLI level1;
+    class PROG,CTRL,DB,P1,P2,P3 level2;
+    class C1,C2,C3,C4 detail;
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, securityLevel: "loose" });
+  </script>
+</body>
+</html>

@@ -317,3 +317,418 @@ GravitySettler.Settle()                                    [אחרי כל מיק
 LoadingSequencer.Sequence()                                [סדר טעינה לתצוגה]
 
 ================================================================================
+
+
+
+
+================================================================================
+       שלב 1 — הבנת מבנה הפרויקט: הסבר מלא ומדויק
+================================================================================
+
+
+================================================================================
+א. סקירה עליונה — מה יש בתיקיית הפרויקט
+================================================================================
+
+OptiLoad/
+├── client/              ← ממשק המשתמש (דפדפן)
+├── server/              ← כל הלוגיקה והשרת
+├── db/                  ← סקריפטי יצירת בסיס הנתונים
+├── OptiLoad.slnx        ← קובץ ה-Solution (Visual Studio)
+└── ALGORITHMS_EXPLAINED.txt
+
+OptiLoad.slnx — זה "קובץ הגג" שאומר ל-Visual Studio:
+"יש כאן 4 פרויקטים, תטען אותם יחד."
+
+
+================================================================================
+ב. תיקיית client/ — הצד של הדפדפן
+================================================================================
+
+client/
+├── index.html                           ← דף כניסה (redirect ל-login)
+├── css/styles.css                       ← עיצוב כללי
+├── js/api.js                            ← פונקציות שליחת בקשות ל-API
+└── pages/
+    ├── login.html                       ← התחברות
+    ├── 01_main-packing-interface.html   ← ממשק אריזה ראשי
+    ├── 02_3d-result-viewer.html         ← תצוגת תלת-ממד
+    ├── 03_snapshot-viewer.html          ← צפייה בסנאפשוטים
+    ├── 04_sessions-manager.html         ← ניהול סשנים
+    └── 05_user-join.html                ← הצטרפות משתמש
+
+api.js — כל קריאת fetch() ל-API מרוכזת כאן.
+הדפים לא שולחים בקשות ישירות — הם קוראים לפונקציות מ-api.js.
+
+
+================================================================================
+ג. תיקיית db/ — בסיס הנתונים
+================================================================================
+
+db/
+├── migrate-admin.sql    ← יוצר טבלאות: Admin, Users, AccessRequests
+├── migrate-sessions.sql ← יוצר טבלאות: Sessions, SessionBoxes, SessionUsers
+└── seed-boxes.sql       ← מוסיף קרטונים לדוגמה לטבלת Boxes
+
+SQL Server LocalDB — בסיס הנתונים רץ מקומית על המחשב.
+שם הבסיס: OptiLoadDB
+מחרוזת החיבור נמצאת ב-appsettings.Development.json:
+  Server=(localdb)\MSSQLLocalDB;Database=OptiLoadDB;Trusted_Connection=True;...
+
+
+================================================================================
+ד. תיקיית server/ — ארבעה פרויקטים
+================================================================================
+
+server/
+├── OptiLoad.Core/       ← לוגיקה עסקית (אין תלות בשום דבר חיצוני)
+├── OptiLoad.Data/       ← גישה לבסיס הנתונים
+├── OptiLoad.API/        ← שרת האינטרנט (תלוי ב-Core וב-Data)
+└── OptiLoad.Tests/      ← בדיקות (תלוי ב-Core)
+
+תרשים תלויות:
+  OptiLoad.API   → OptiLoad.Core
+  OptiLoad.API   → OptiLoad.Data
+  OptiLoad.Tests → OptiLoad.Core
+  OptiLoad.Data  → OptiLoad.Core
+
+OptiLoad.Core לא תלוי בשום פרויקט אחר — הוא הבסיס.
+
+
+================================================================================
+ה. פירוט כל פרויקט
+================================================================================
+
+------------------------------------------------------------
+1. OptiLoad.Core/ — הלוגיקה העסקית
+------------------------------------------------------------
+
+OptiLoad.Core/
+├── Domain/
+│   ├── Models/          ← כל ה"אובייקטים" של הפרויקט (15 קבצים)
+│   └── Interfaces/      ← חוזים לגישה לנתונים (4 קבצים)
+└── Application/
+    ├── Algorithms/      ← 8 אלגוריתמי האריזה
+    ├── Services/        ← PackingService, AdminService, PasswordHasher, TestDataRunner
+    └── TestData/        ← SampleTestData.json (נתוני בדיקה)
+
+Domain/Models/ — 15 קבצים (המילים של הפרויקט):
+  Box.cs              ← קרטון: שם, מימדים, משקל, שביר, סיבוב
+  Container.cs        ← קונטיינר בפועל (מקושר ל-Job)
+  ContainerTemplate.cs← תבנית קונטיינר — גודל סטנדרטי לשימוש חוזר
+  PackingJob.cs       ← "משימת אריזה" — מה לארוז ובאיזה קונטיינר
+  PackingJobBox.cs    ← קשר: Job X מכיל קרטון Y בכמות Z
+  PlacementResult.cs  ← תוצאת מיקום: קרטון → קונטיינר, מיקום, סיבוב
+  ComputationModels.cs← BoxInstance, PlacedBox, BinState, PackingResult
+                         (מצבים תוך-כדי-חישוב)
+  ContainerSnapshot.cs← "תמונת מצב" שמורה של קונטיינר
+  PackingSession.cs   ← סשן עבודה משותף (ריבוי משתמשים)
+  SessionBox.cs       ← קרטון בתוך סשן
+  SessionUser.cs      ← משתמש בתוך סשן
+  Admin.cs            ← מנהל מערכת
+  AccessRequest.cs    ← בקשת גישה מאת משתמש
+  BoxAuditLog.cs      ← לוג שינויים לקרטונים
+  ErrorLog.cs         ← לוג שגיאות
+
+Domain/Interfaces/ — 4 ממשקים (חוזים):
+  IPackingRepository.cs  ← פעולות על Jobs, Boxes, Placements
+  IAdminRepository.cs    ← פעולות על Admins, Users
+  ISnapshotRepository.cs ← פעולות על Snapshots
+  ISessionRepository.cs  ← פעולות על Sessions
+
+למה Interfaces?
+Core לא יודע שיש SQL. הוא מדבר רק עם הממשק.
+Data מממש את הממשק.
+זה מאפשר להחליף DB מבלי לשנות את הלוגיקה.
+
+------------------------------------------------------------
+2. OptiLoad.Data/ — גישה לבסיס הנתונים
+------------------------------------------------------------
+
+OptiLoad.Data/
+├── DatabaseService.cs        ← מממש את כל 4 הממשקים
+├── DatabaseSessionService.cs ← לוגיקת sessions בלבד
+└── Migrations/               ← היסטוריית שינויי DB
+
+DatabaseService.cs הוא קובץ אחד ענק שמממש את כל
+פעולות ה-DB עם SQL ישיר (ללא ORM).
+
+------------------------------------------------------------
+3. OptiLoad.API/ — שרת האינטרנט
+------------------------------------------------------------
+
+OptiLoad.API/
+├── Program.cs                   ← נקודת הכניסה, רישום כל השירותים
+├── appsettings.json             ← הגדרות production (connection string ריק)
+├── appsettings.Development.json ← הגדרות development (JWT key + DB)
+├── Controllers/                 ← 8 Controllers
+├── DTOs/                        ← VisualizationDtos.cs
+├── Properties/launchSettings.json ← הגדרות הרצה (port 5098)
+└── wwwroot/                     ← קבצים סטטיים
+
+Program.cs — הקובץ הכי חשוב בשכבת ה-API. הוא:
+  1. רושם DatabaseService כ-Singleton
+  2. רושם PackingService כ-Scoped
+  3. מגדיר JWT Authentication
+  4. מגדיר CORS (מאפשר לדפדפן לדבר עם השרת)
+  5. מריץ SeedDefaultAdminIfEmptyAsync() בהפעלה
+
+8 Controllers:
+  AuthController        /api/auth          ← Login, יצירת JWT
+  BoxController         /api/box           ← CRUD קרטונים
+  ContainerController   /api/container     ← CRUD קונטיינרים + templates
+  PackingJobController  /api/packingjob    ← יצירה + הרצת משימות אריזה
+  SnapshotController    /api/snapshots     ← שמירה/טעינת snapshots
+  VisualizationController /api/visualization ← מחזיר HTML תלת-ממד
+  ExportController      /api/export        ← ייצוא נתונים
+  SessionController     /api/session       ← ניהול סשנים משותפים
+
+אבטחה:
+כל Controller מלבד AuthController מסומן [Authorize] — דורש JWT Token.
+
+JWT Flow:
+  POST /api/auth/login  →  מחזיר Token
+  כל בקשה אחרת        →  Header: "Authorization: Bearer <Token>"
+
+------------------------------------------------------------
+4. OptiLoad.Tests/ — בדיקות
+------------------------------------------------------------
+
+OptiLoad.Tests/
+├── BoxTests.cs            ← 5 בדיקות על GetAllowedRotations()
+├── BranchAndBoundTests.cs ← בדיקות על ה-B&B solver
+├── GreedySolverTests.cs   ← בדיקות על Greedy
+└── LowerBoundTests.cs     ← בדיקות על חישוב L0
+
+Framework: xUnit
+הרצה: dotnet test
+מצב: 20/20 עוברות
+
+
+================================================================================
+ו. זרימת בקשה מלאה — מהדפדפן לתוצאה
+================================================================================
+
+1.  משתמש לוחץ "הרץ אריזה" ב-01_main-packing-interface.html
+2.  api.js שולח: POST /api/packingjob/{id}/run  + Bearer Token
+3.  PackingJobController.Run(id) מקבל את הבקשה
+4.  בודק שה-job קיים (GetJobById) — אם לא: 404
+5.  קורא ל-PackingService.RunPackingJob(id)
+6.  PackingService טוען את הנתונים מ-DB
+7.  מריץ BranchAndBoundSolver.Solve()
+8.  BranchAndBound → HeuristicH1 → SingleBinFiller → CornerPoints → GravitySettler
+9.  תוצאה חוזרת ל-PackingService
+10. PackingService שומר PlacementResults ב-DB
+11. Controller מחזיר 200 + JSON עם התוצאה
+12. הדפדפן מציג תלת-ממד
+
+
+================================================================================
+       שאלות לבדיקה עצמית — שלב 1
+================================================================================
+
+
+קבוצה א — מבנה הפרויקט
+-----------------------
+ש1.  כמה פרויקטי C# יש בתיקיית server/? מה שם כל אחד?
+ש2.  איזה פרויקט לא תלוי בשום פרויקט אחר, ולמה זה כך?
+ש3.  מה ההבדל בין OptiLoad.Core ל-OptiLoad.Data?
+ש4.  מה תפקידו של קובץ OptiLoad.slnx?
+ש5.  איפה מוגדרת מחרוזת החיבור לבסיס הנתונים, ולמה לא ב-appsettings.json הרגיל?
+
+קבוצה ב — שכבת ה-Client
+------------------------
+ש6.  מה עושה api.js ולמה הוא נפרד מה-HTML?
+ש7.  רשמי בסדר נכון את שמות 6 דפי ה-HTML שב-pages/.
+ש8.  איזה דף HTML מציג תוצאות אריזה בתלת-ממד?
+
+קבוצה ג — מודלים וממשקים
+--------------------------
+ש9.  מה ההבדל בין Container.cs ל-ContainerTemplate.cs?
+ש10. מה ההבדל בין PackingJob.cs ל-PackingJobBox.cs?
+ש11. מה מכיל ComputationModels.cs ולמה הוא נפרד מהמודלים האחרים?
+ש12. למה יש Interfaces/ ב-Core אם DatabaseService.cs נמצא ב-Data?
+ש13. כמה Interfaces יש, ומה שם כל אחד?
+
+קבוצה ד — שכבת ה-API
+----------------------
+ש14. מה עושה Program.cs — ציין 5 דברים שהוא עושה.
+ש15. מה ההבדל בין Singleton ל-Scoped — ואיזה שירות רשום בכל אחד מהם?
+ש16. מה זה CORS ולמה צריך אותו כאן?
+ש17. איזה Controller הוא היחיד שלא דורש [Authorize]? למה?
+ש18. מה קורה בהפעלת השרת לפני שמגיעה הבקשה הראשונה?
+
+קבוצה ה — זרימה ואבטחה
+------------------------
+ש19. תארי בסדר נכון מה קורה מהרגע שמשתמש שולח
+     POST /api/packingjob/5/run עד שמקבל תשובה.
+ש20. מה זה JWT Token? מאיפה מקבלים אותו, ואיך משתמשים בו?
+ש21. אם שולחים בקשה ל-GET /api/box ללא Token — מה קורה?
+ש22. מה ה-port שהשרת מאזין עליו?
+ש23. איפה מאוחסן מפתח ה-JWT, ומה הדרישה המינימלית לאורכו?
+
+קבוצה ו — שאלות עמוקות
+------------------------
+ש24. למה DatabaseService מממש ארבעה ממשקים שונים במקום אחד?
+ש25. אם היית רוצה להחליף SQL Server ב-PostgreSQL — באיזה קובץ בלבד היית צריכה לגעת?
+ש26. מה ההבדל בין wwwroot/ לבין תיקיית client/?
+ש27. מה עושה seed-boxes.sql ומתי מריצים אותו?
+ש28. למה PackingService רשום כ-Scoped ולא כ-Singleton?
+
+
+================================================================================
+       תשובות — שלב 1
+================================================================================
+
+
+קבוצה א — מבנה הפרויקט
+-----------------------
+
+ת1. 4 פרויקטים:
+    OptiLoad.Core, OptiLoad.Data, OptiLoad.API, OptiLoad.Tests
+
+ת2. OptiLoad.Core — כי הוא מכיל רק לוגיקה עסקית טהורה.
+    אין בו שום תלות ב-DB, ב-HTTP, או בתשתית חיצונית.
+    זה עיקרון ה-"Clean Architecture" — הלוגיקה לא תלויה בפרטי מימוש.
+
+ת3. Core — מגדיר מה הפרויקט עושה (אלגוריתמים, מודלים, ממשקים).
+    Data — מגדיר איך שומרים נתונים (SQL, DB). מממש את ממשקי Core.
+
+ת4. קובץ Solution — מקבץ את כל הפרויקטים יחד.
+    מאפשר ל-Visual Studio/Rider לטעון, לבנות ולנהל את כולם כיחידה אחת.
+
+ת5. ב-appsettings.Development.json — כי מחרוזת חיבור ל-DB מקומי
+    שייכת לסביבת פיתוח בלבד. appsettings.json (production) לא אמור
+    להכיל פרטי חיבור לסביבה המקומית. כך גם מפתח ה-JWT נמצא שם.
+
+
+קבוצה ב — שכבת ה-Client
+------------------------
+
+ת6. api.js מרכז את כל קריאות ה-fetch() ל-API במקום אחד.
+    הפרדה זו מונעת כפילות קוד — כל דף HTML קורא לפונקציה
+    ולא כותב בקשת HTTP בעצמו. אם ה-URL משתנה — משנים רק כאן.
+
+ת7. login.html
+    01_main-packing-interface.html
+    02_3d-result-viewer.html
+    03_snapshot-viewer.html
+    04_sessions-manager.html
+    05_user-join.html
+
+ת8. 02_3d-result-viewer.html
+
+
+קבוצה ג — מודלים וממשקים
+--------------------------
+
+ת9.  ContainerTemplate.cs — תבנית כללית (גודל סטנדרטי, ניתן לשימוש חוזר).
+     Container.cs — קונטיינר ספציפי שנוצר עבור Job מסוים, מקושר לתוצאה.
+
+ת10. PackingJob.cs — המשימה עצמה: לאיזה container template, מתי נוצרה, מה הסטטוס.
+     PackingJobBox.cs — טבלת קשר: Job X מכיל קרטון Y בכמות Z.
+     (יחס Many-to-Many בין Job לבין Box)
+
+ת11. ComputationModels.cs מכיל: BoxInstance, PlacedBox, BinState, PackingResult.
+     אלה אובייקטים זמניים שנוצרים רק בזמן הרצת האלגוריתם.
+     הם לא נשמרים ב-DB — לכן הם נפרדים מהמודלים הקבועים.
+
+ת12. Core מגדיר Interfaces כדי לתאר "מה אני צריך מה-DB"
+     מבלי לדעת איך זה ממומש.
+     Data מממש את הממשקים האלה עם SQL.
+     כך Core נשאר נקי ואפשר להחליף את Data מבלי לשנות את Core.
+
+ת13. 4 ממשקים:
+     IPackingRepository   — Jobs, Boxes, Placements
+     IAdminRepository     — Admins, Users
+     ISnapshotRepository  — Snapshots
+     ISessionRepository   — Sessions
+
+
+קבוצה ד — שכבת ה-API
+----------------------
+
+ת14. Program.cs עושה:
+     1. רושם DatabaseService כ-Singleton
+     2. רושם PackingService כ-Scoped
+     3. מגדיר JWT Authentication עם מפתח מה-config
+     4. מגדיר CORS לאפשר גישה מדפדפן
+     5. מריץ SeedDefaultAdminIfEmptyAsync() — יוצר admin ברירת מחדל
+
+ת15. Singleton — מופע אחד לכל חיי האפליקציה.
+                  DatabaseService (חיבור DB יחיד, משותף לכולם).
+     Scoped    — מופע חדש לכל בקשת HTTP.
+                  PackingService (חישוב אריזה לכל בקשה בנפרד,
+                  למנוע ערבוב מצב בין בקשות מקבילות).
+
+ת16. CORS (Cross-Origin Resource Sharing) — מנגנון שמאפשר לדפדפן
+     לשלוח בקשות לשרת שנמצא על domain/port אחר.
+     צריך כאן כי הדפדפן פותח HTML מ-port 5500 (Live Server)
+     ושולח בקשות ל-port 5098 (API) — נחשב "cross-origin".
+
+ת17. AuthController — כי הוא אחראי לבצע את ה-Login עצמו.
+     אי אפשר לדרוש Token לפני שהמשתמש קיבל Token.
+
+ת18. מריץ את SeedDefaultAdminIfEmptyAsync() —
+     בודק אם יש admin בטבלה, ואם לא יוצר:
+     שם משתמש: admin, סיסמה: Admin@1234!
+
+
+קבוצה ה — זרימה ואבטחה
+------------------------
+
+ת19. 1.  דפדפן שולח POST /api/packingjob/5/run עם Bearer Token
+     2.  ASP.NET בודק את ה-Token (JWT Middleware)
+     3.  PackingJobController.Run(5) מקבל את הבקשה
+     4.  קורא ל-_db.GetJobById(5) — בודק שה-Job קיים
+     5.  אם לא קיים — מחזיר 404 NotFound
+     6.  קורא ל-_packingService.RunPackingJob(5)
+     7.  PackingService טוען קרטונים + תבנית קונטיינר מ-DB
+     8.  מריץ BranchAndBoundSolver → כל שאר האלגוריתמים
+     9.  מקבל PackingResult עם מיקומי כל הקרטונים
+     10. שומר PlacementResults ב-DB
+     11. מחזיר 200 + JSON לדפדפן
+     12. הדפדפן מנתב ל-02_3d-result-viewer.html
+
+ת20. JWT (JSON Web Token) — טוקן מוצפן שמזהה משתמש מחובר.
+     מקבלים: POST /api/auth/login עם username+password → מחזיר token.
+     משתמשים: בכל בקשה שלאחר מכן, בתוך ה-Header:
+       Authorization: Bearer eyJhbGciO...
+
+ת21. מחזיר 401 Unauthorized — כי כל Controllers (מלבד Auth)
+     מסומנים [Authorize], ו-JWT Middleware חוסם בקשות ללא Token.
+
+ת22. Port 5098 (הגדרת http profile ב-launchSettings.json)
+
+ת23. המפתח נמצא ב-appsettings.Development.json תחת Jwt:Key.
+     הדרישה: לפחות 32 תווים (נאכף ב-Program.cs עם exception).
+
+
+קבוצה ו — שאלות עמוקות
+------------------------
+
+ת24. DatabaseService מממש 4 ממשקים כי כל ממשק מייצג "תחום"
+     שונה (Packing, Admin, Snapshot, Session).
+     הפרדה זו מאפשרת לכל Controller לקבל רק את הממשק
+     שהוא צריך — עיקרון ISP (Interface Segregation Principle).
+     בפועל: קובץ אחד, 4 "פנים" שונות לאותה כיתה.
+
+ת25. רק DatabaseService.cs — כי כל ה-SQL נמצא שם.
+     Core לא יודע שיש SQL, הוא מדבר רק עם הממשקים.
+
+ת26. wwwroot/ — קבצים שהשרת מגיש ישירות ב-HTTP (static files).
+               לא צריך Controller, מגישים כפי שהם.
+     client/   — קבצי ה-HTML/JS הראשיים של הפרויקט,
+               לא בהכרח מוגשים על ידי השרת (ניתן לפתוח ישירות).
+
+ת27. seed-boxes.sql מוסיף קרטונים לדוגמה לטבלת Boxes.
+     מריצים אותו פעם אחת לאחר יצירת מסד הנתונים —
+     כדי שיהיו נתונים לעבוד איתם בפיתוח ובהדגמה.
+
+ת28. PackingService צריך להיות Scoped כי הוא מריץ חישוב אריזה
+     שעשוי להחזיק מצב פנימי בזמן הריצה.
+     אם היה Singleton — בקשות מקבילות ממשתמשים שונים
+     היו משותפות לאותו מופע ועלולות לגרום לערבוב נתונים.
+     Scoped מבטיח מופע נפרד לכל בקשת HTTP.
+
+================================================================================

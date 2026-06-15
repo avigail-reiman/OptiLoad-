@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>תרשים מחלקות – שכבת Data</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', Arial, sans-serif; padding: 24px; }
+  h1 { color: #f85149; text-align: center; margin-bottom: 8px; }
+  h2 { color: #8b949e; text-align: center; font-size: 14px; margin-bottom: 32px; font-weight: normal; }
+  .layer-note { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 16px 24px; margin-bottom: 32px; font-size: 13px; color: #8b949e; }
+  .layer-note span { color: #e6edf3; font-weight: 600; }
+  .diagram-wrap { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 24px; margin-bottom: 32px; }
+  .diagram-title { color: #ffa657; font-size: 15px; font-weight: 700; margin-bottom: 16px; border-bottom: 1px solid #21262d; padding-bottom: 8px; }
+</style>
+</head>
+<body>
+<h1>תרשים מחלקות — שכבת Data</h1>
+<h2>OptiLoad.Data / Infrastructure</h2>
+
+<div class="layer-note">
+  <span>שכבת Data (Infrastructure)</span> — מימוש גישה למסד הנתונים SQL Server באמצעות Dapper.<br>
+  <span>DatabaseService</span> — גישה לנתוני ארגזים, עבודות ומכולות.<br>
+  <span>DatabaseSessionService</span> — גישה לנתוני סשנים, משתמשים, בקשות גישה ויומן שינויים.
+</div>
+
+<div class="diagram-wrap">
+  <div class="diagram-title">🗄 DatabaseService</div>
+  <div class="mermaid">
+classDiagram
+  direction TB
+
+  class DatabaseService {
+    -string _connectionString
+    +GetBoxes(int adminId) List~Box~
+    +GetBoxById(int boxId) Box?
+    +GetAllBoxes() List~Box~
+    +CreateBox(Box box) int
+    +UpdateBox(Box box)
+    +DeleteBox(int boxId)
+    +GetJob(int jobId) PackingJob?
+    +GetJobsByAdmin(int adminId) List~PackingJob~
+    +CreateJob(int adminId, int containerId) int
+    +UpdateJobStatus(int jobId, JobStatus status)
+    +SavePlacements(int jobId, PackingResult result)
+    +CompleteJob(int jobId, PackingResult result)
+    +GetContainerDimensions(int jobId) ContainerDimensions
+    +GetJobBoxInstances(int jobId) List~BoxInstance~
+    +GetAdmin(string username) Admin?
+    +AdminsExist() bool
+    +CreateAdmin(string, string, string)
+    +GetContainers() List~Container~
+    +GetContainerTemplates() List~ContainerTemplate~
+    +CreateContainerTemplate(ContainerTemplate) int
+    +CreateContainer(int templateId) int
+    +SavePlacementResults(int, PackingResult)
+    +LogError(int, string, Exception)
+  }
+
+  class IPackingRepository {
+    &lt;&lt;interface&gt;&gt;
+  }
+  class IAdminRepository {
+    &lt;&lt;interface&gt;&gt;
+  }
+
+  DatabaseService ..|> IPackingRepository : מממש
+  DatabaseService ..|> IAdminRepository : מממש
+  DatabaseService --> SqlServer : Dapper
+  </div>
+</div>
+
+<div class="diagram-wrap">
+  <div class="diagram-title">🗄 DatabaseSessionService</div>
+  <div class="mermaid">
+classDiagram
+  direction TB
+
+  class DatabaseSessionService {
+    -string _connectionString
+    +GetSessionsByAdminAsync(int) List~PackingSession~
+    +GetSessionByIdAsync(int) PackingSession?
+    +GetSessionByTokenAsync(string) PackingSession?
+    +CreateSessionAsync(int,string,string,string) int
+    +UpdateSessionStatusAsync(int, string)
+    +DeleteSessionAsync(int)
+    +GetSessionUserByTokenAsync(string) SessionUser?
+    +CreateSessionUserAsync(int,string,string,string,string) int
+    +GetRootTokenAsync(string) string?
+    +GetDeniedCountInChainAsync(string,int) int
+    +GetRequestsBySessionAsync(int) List~AccessRequest~
+    +GetRequestByIdAsync(int) AccessRequest?
+    +GetRequestByUserTokenAsync(string) AccessRequest?
+    +CreateAccessRequestAsync(int,int) int
+    +UpdateRequestStatusAsync(int, string)
+    +GetSessionBoxesAsync(int) List~SessionBox~
+    +AddSessionBoxAsync(int,int,int,string) int
+    +DeleteSessionBoxAsync(int,int) bool
+    +GetAuditLogAsync(int) List~BoxAuditLog~
+    +AddAuditLogAsync(BoxAuditLog)
+    +SaveSnapshotsAsync(int, IEnumerable~ContainerSnapshot~)
+    +GetSnapshotsAsync(int) List~ContainerSnapshot~
+    +DeleteSnapshotsAsync(int)
+  }
+
+  class ISessionRepository {
+    &lt;&lt;interface&gt;&gt;
+  }
+  class ISnapshotRepository {
+    &lt;&lt;interface&gt;&gt;
+  }
+
+  DatabaseSessionService ..|> ISessionRepository : מממש
+  DatabaseSessionService ..|> ISnapshotRepository : מממש
+  DatabaseSessionService --> SqlServer : Dapper
+  </div>
+</div>
+
+<div class="diagram-wrap">
+  <div class="diagram-title">🏗 תלויות מלאות — ארכיטקטורת שכבות</div>
+  <div class="mermaid">
+flowchart TB
+  subgraph L1["שכבת Domain\n(OptiLoad.Core/Domain)"]
+    direction LR
+    MOD["Models\nAdmin, Box, PackingJob\nPackingSession, SessionBox\nBoxAuditLog, PackingResult..."]
+    INT["Interfaces\nIAdminRepository\nIPackingRepository\nISessionRepository\nISnapshotRepository"]
+  end
+
+  subgraph L2["שכבת Application\n(OptiLoad.Core/Application)"]
+    direction LR
+    SVC["Services\nAdminService\nPackingService"]
+    ALG["Algorithms\nBranchAndBoundSolver\nGreedySolver\nHeuristicH1\nCornerPointsFinder\nGravitySettler\nLowerBoundCalculator\nLoadingSequencer\nSingleBinFiller"]
+  end
+
+  subgraph L3["שכבת API\n(OptiLoad.API)"]
+    direction LR
+    CTR["Controllers\nAuthController\nBoxController\nSessionController\nVisualizationController\nSnapshotController\nPackingJobController\nExportController\nContainerController"]
+    SVC2["Services\nLoginRateLimiter"]
+    DTO["DTOs\nVisualizationRequest\nBoxDto\nContainerDimensionsDto"]
+  end
+
+  subgraph L4["שכבת Data\n(OptiLoad.Data)"]
+    direction LR
+    DB["DatabaseService\n(IPackingRepository\n+ IAdminRepository)"]
+    DBS["DatabaseSessionService\n(ISessionRepository\n+ ISnapshotRepository)"]
+  end
+
+  subgraph EXT["תשתית חיצונית"]
+    SQL[("SQL Server\nLocalDB")]
+  end
+
+  L3 --> L2
+  L3 --> INT
+  L2 --> L1
+  L4 ..|> INT : מממש
+  L4 --> SQL
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({ theme: 'dark', startOnLoad: true, themeVariables: {
+    primaryColor: '#1f2937', primaryTextColor: '#e6edf3',
+    primaryBorderColor: '#f85149', lineColor: '#ffa657',
+    secondaryColor: '#161b22', tertiaryColor: '#0d1117'
+  }});
+</script>
+</body>
+</html>

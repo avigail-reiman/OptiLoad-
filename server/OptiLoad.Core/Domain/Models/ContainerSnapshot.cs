@@ -1,12 +1,12 @@
 namespace OptiLoad.Core.Models
 {
-    public class ContainerSnapshot
+    public class ContainerSnapshot//מודל שמייצג מצב של מכולה מסוימת, כולל מזהה ייחודי, מזהה העבודה, שלב האריזה, שם הקופסה, נתוני התמונה ותאריך יצירה
     {
-        public int Id { get; set; }
-        public int JobId { get; set; }
-        public int LoadingStep { get; set; }
-        public string BoxName { get; set; } = string.Empty;
-        public string ImageData { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; }
+        public int Id { get; set; }//מזהה ייחודי של מצב המכולה במסד הנתונים, משמש לזיהוי המצב ולקשר אותו לטבלאות אחרות במסד הנתונים
+        public int JobId { get; set; }//מזהה של העבודה שאליה שייך מצב המכולה, משמש לקשר בין מצב המכולה לעבודה במסד הנתונים
+        public int LoadingStep { get; set; }// השלב הנוכחי של האריזה, יכול להיות 0 (טרם התחיל), 1 (בתהליך) או 2 (הושלם), משמש לקביעת התקדמות האריזה של המכולה
+        public string BoxName { get; set; } = string.Empty;//שם הקופסה הנוכחית שנמצאת בתהליך האריזה, משמש לתיעוד ולממשק המשתמש כדי לדעת איזו קופסה שובצה לאחרונה במכולה
+        public string ImageData { get; set; } = string.Empty;//נתוני התמונה של המכולה לאחר השיבוץ האחרון, שמור כמחרוזת בפורמט Base64 כדי לאפשר הצגה בממשק המשתמש ובתיעוד
+        public DateTime CreatedAt { get; set; }//תאריך יצירת מצב המכולה, משמש לתיעוד ולממשק המשתמש כדי לדעת מתי התעדכן המצב לאחרונה
     }
 }

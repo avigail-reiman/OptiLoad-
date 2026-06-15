@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>16 — תרשים מסכים · OptiLoad</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #555; font-family: Arial, sans-serif; }
+
+  .page {
+    width: 190mm;
+    background: #ffffff;
+    margin: 24px auto;
+    padding: 13mm 12mm;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.5);
+    min-height: 277mm;
+  }
+
+  h2 {
+    font-size: 15pt;
+    color: #0f172a;
+    text-align: center;
+    border-bottom: 2.5px solid #1d4ed8;
+    padding-bottom: 3mm;
+    margin-bottom: 3mm;
+  }
+
+  .subtitle {
+    font-size: 9.5pt;
+    color: #475569;
+    text-align: center;
+    margin-bottom: 6mm;
+  }
+
+  .mermaid {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    background: #ffffff;
+  }
+
+  .mermaid svg {
+    max-width: 100% !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; box-shadow: none; width: 100%; min-height: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <h2>16  תרשים מסכים — Screen Flow Diagram · OptiLoad</h2>
+  <p class="subtitle">היררכיית המסכים ומעברי הניווט בין עמודי הממשק · 6 מסכים · 2 סוגי משתמשים</p>
+
+  <div class="mermaid">
+%%{init:{
+  "theme":"base",
+  "themeVariables":{
+    "background":"#ffffff",
+    "primaryColor":"#dbeafe",
+    "primaryTextColor":"#0f172a",
+    "primaryBorderColor":"#1d4ed8",
+    "lineColor":"#334155",
+    "secondaryColor":"#dcfce7",
+    "tertiaryColor":"#fef9c3",
+    "fontFamily":"Arial",
+    "fontSize":"12px"
+  },
+  "flowchart":{"nodeSpacing":20,"rankSpacing":44,"padding":12,"useMaxWidth":true,"curve":"linear"}
+}}%%
+flowchart TD
+
+  ADMIN(["מנהל מערכת"])
+  GUEST(["משתמש שטח"])
+
+  LOGIN["login.html\nכניסת מנהל\nUsername + Password + JWT"]
+
+  SESS["04_sessions-manager.html\nדף הבית לאחר כניסה\nתוכניות שיבוץ + שיתוף LinkToken"]
+
+  MAIN["01_main-packing-interface.html\nממשק ניהול ראשי\nארגזים + קונטיינר + שיבוץ B&B\nצפייה 3D מובנית + Snapshots"]
+
+  SNAP["03_snapshot-viewer.html\nגלריית תמונות שלבים\nSlideshow + השוואת שלבים"]
+
+  VIEWER["02_3d-result-viewer.html\nתצוגת תוצאות 3D עצמאית\nJobId כפרמטר URL"]
+
+  JOIN["05_user-join.html\nהצטרפות לתוכנית\nהזנת LinkToken\nגישת צפייה בלבד"]
+
+  LOCK["נעילה 5 דקות\n3 ניסיונות כושלים\nLoginRateLimiter by IP"]
+
+  ADMIN -->|"פותח דפדפן"| LOGIN
+  GUEST -->|"LinkToken שהופץ"| JOIN
+
+  LOGIN -->|"אימות הצליח - JWT לsessionStorage"| SESS
+  LOGIN -.->|"3 ניסיונות כושלים"| LOCK
+  LOCK -.->|"לאחר 5 דק' - שוחרר"| LOGIN
+
+  SESS -->|"כפתור ממשק שיבוץ"| MAIN
+  SESS -->|"כפתור תמונות"| SNAP
+  SESS -->|"כפתור יציאה"| LOGIN
+
+  MAIN -->|"כפתור תוכניות"| SESS
+  MAIN -->|"כפתור תמונות"| SNAP
+  MAIN -->|"כפתור יציאה - מנקה JWT"| LOGIN
+
+  SNAP -.->|"JWT לא תקין - הפניה אוטומטית"| LOGIN
+
+  JOIN -->|"JobId לצפייה read-only"| VIEWER
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: "loose" });
+</script>
+</body>
+</html>

@@ -6,62 +6,60 @@ using OptiLoad.Core.Models;
 
 namespace OptiLoad.Core.Algorithms
 {
-
     public class BranchAndBoundSolver
     {
-        
-        private const int MaxGlobalNodes = 10_000_000;
+        private const int MaxGlobalNodes = 10_000_000;//כמות הצמתים המקסימלית שתיבדק לפני שהאלגוריתם יוותר ויעבור לפתרון חמדני
 
-        public double TimeLimitSeconds { get; set; } = 3600.0;
+        public double TimeLimitSeconds { get; set; } = 3600.0;//כמות הזמן המקסימלית שהאלגוריתם ירוץ לפני שיוותר ויעבור לפתרון חמדני
 
-private readonly ContainerDimensions _container;
-        private readonly Stopwatch           _stopwatch = new();
+        private readonly ContainerDimensions _container; //מידות המכולה שבה יש לארוז את הארגזים
+        private readonly Stopwatch _stopwatch = new(); //שעון עצר למדידת זמן הריצה של האלגוריתם
 
-        private int  _globalNodeCount;
-        private int  _bestBins;
-        private bool _isOptimal;
-        private bool _greedyFallbackUsed;
-        private List<BoxInstance> _greedyUnplaced = new();
+        private int  _globalNodeCount;//מונה גלובלי לספירת הצמתים שנבדקו עד כה
+        private int  _bestBins;//מספר המכולות הטוב ביותר שנמצא עד כה
+        private bool _isOptimal;//דגל שמציין האם הפתרון הטוב ביותר שנמצא הוא אופטימלי או לא
+        private bool _greedyFallbackUsed;//דגל שמציין האם נעשה שימוש בפתרון חמדני
+        private List<BoxInstance> _greedyUnplaced = new();//רשימת הארגזים שלא נכללו בפתרון החמדני
 
-        public double MaxFillHeightRatio { get; set; } = 1.0;
+        public double MaxFillHeightRatio { get; set; } = 1.0;//מגדיר עד איזה גובה מותר לארוז בתוך המכולה - ברירת מחדל 100%
 
-private List<(BoxInstance instance, int bin, Position3D pos, Rotation rot)>
-            _bestPlacements = new();
+        private List<(BoxInstance instance, int bin, Position3D pos, Rotation rot)>//רשימת המיקומים הטובים ביותר שנמצאו עד כה - הארגז, המכולה שבה הוא ארוז, המיקום בתוך המכולה והסיבוב שלו
+            _bestPlacements = new();//התחלה כריקה, תתמלא במהלך הריצה
 
-        public BranchAndBoundSolver(ContainerDimensions container)
+        public BranchAndBoundSolver(ContainerDimensions container)//בנאי שמקבל את מידות המכולה שבה יש לארוז את הארגזים
         {
-            _container = container;
+            _container = container;//שמירת המידות המכולה לשימוש במהלך הריצה
         }
 
 public PackingResult Solve(IEnumerable<BoxInstance> instances)
         {
-            _stopwatch.Restart();
-            _greedyFallbackUsed = false;
-            _greedyUnplaced     = new List<BoxInstance>();
-            var allBoxes = instances.ToList(); 
-            if (allBoxes.Count == 0)
-                return BuildResult(new(), allBoxes, 0, true);
+            _stopwatch.Restart();//מתחיל למדוד את זמן הריצה של האלגוריתם
+            _greedyFallbackUsed = false;//לא נעשה שימוש בפתרון חמדני עדיין
+            _greedyUnplaced = new List<BoxInstance>();//רשימת הארגזים שלא נכללו בפתרון החמדני מתחילה כריקה
+            var allBoxes = instances.ToList();//רשימת כל הארגזים שיש לארוז, ממירה את הארגזים שהתקבלו לרשימה כדי לאפשר גישה לפי אינדקס
+            if (allBoxes.Count == 0)//אם אין ארגזים לארוז
+                return BuildResult(new(), allBoxes, 0, true);//בונה תוצאה עם רשימת מיקומים ריקה, רשימת כל הארגזים, 0 מכולות וסטטוס אופטימלי true
 
-var nonFragile = allBoxes.Where(b => !b.BoxDefinition.IsFragile).ToList();
-            var fragile    = allBoxes.Where(b =>  b.BoxDefinition.IsFragile).ToList();
+            var nonFragile = allBoxes.Where(b => !b.BoxDefinition.IsFragile).ToList();//מכניסה לרשימה רק ארגזים שאינם שבירים
+            var fragile = allBoxes.Where(b =>  b.BoxDefinition.IsFragile).ToList();//מכניסה לרשימה רק ארגזים שבירים
 
-int lowerBound = LowerBoundCalculator.ComputeBestLowerBound(nonFragile, _container);
+            int lowerBound = LowerBoundCalculator.ComputeBestLowerBound(nonFragile, _container);//מחשב את החסם החסום ביותר מבין השלושה
 
-            var h1           = new HeuristicH1(_container);
-            var h1Phase1     = h1.Solve(nonFragile);
-            _bestBins        = h1Phase1.binsUsed;
-            _bestPlacements  = h1Phase1.placements;
+            var h1 = new HeuristicH1(_container);//יוצר מופע של המכולה הנוכחית עם H1 החמדני
+            var h1Phase1 = h1.Solve(nonFragile);//ריץ את הפותר החמדני על הארגזים הלא שבירים ומקבל את התוצאה של הפתרון
+            _bestBins = h1Phase1.binsUsed;//מספר המכולות שהשתמש הפותר החמדני עד כה הוא הפתרון הטוב ביותר שנמצא
+            _bestPlacements = h1Phase1.placements;//רשימת המיקומים שהפותר החמדני מצא עד כה היא הפתרון הטוב ביותר שנמצא
 
 {
-                var h1PlacedIds = h1Phase1.placements
-                    .Select(p => p.instance.InstanceId)
+                var h1PlacedIds = h1Phase1.placements//מכניס את מזהי הארגזים שכבר שובצו על ידי הפותר החמדני לרשימה כדי לבדוק אילו ארגזים לא שובצו
+                    .Select(p => p.instance.InstanceId)//
                     .ToHashSet();
-                var h1Unplaced = nonFragile
+                var h1Unplaced = nonFragile//מכניס לרשימה את הארגזים הלא שבירים שלא שובצו על ידי הפותר החמדני על ידי סינון כל הארגזים הלא שבירים לפי אלו שכבר שובצו
                     .Where(b => !h1PlacedIds.Contains(b.InstanceId))
                     .ToList();
-                if (h1Unplaced.Count > 0)
+                if (h1Unplaced.Count > 0)//אם יש ארגזים לא שבירים שלא שובצו על ידי הפותר החמדני
                 {
-                    var h1Bins = RebuildBinsFromPlacements(h1Phase1.placements);
+                    var h1Bins = RebuildBinsFromPlacements(h1Phase1.placements);//בונה את המכולות עם הארגזים שכבר שובצו על ידי הפותר החמדני כדי להשתמש בהן כמצב התחלתי לפתרון החמדני שלב 2
                     GreedySolver.FillRemaining(h1Unplaced, h1Bins, _container, MaxFillHeightRatio);
                     _bestBins       = h1Bins.Count;
                     _bestPlacements = ExtractPlacements(h1Bins);
@@ -75,8 +73,11 @@ _globalNodeCount = 0;
             var phase1Assignment = new List<(BoxInstance instance, int bin)>();
             var phase1OpenBins   = new List<PackingState>();
 
-            BranchMain(sortedNonFragile, phase1Assignment,
-                       phase1OpenBins, lowerBound, fragilePhase: false);
+            if (_bestBins > lowerBound)
+            {
+                BranchMain(sortedNonFragile, phase1Assignment,
+                           phase1OpenBins, lowerBound, fragilePhase: false);
+            }
 
 var bestPhase1Bins = RebuildBinsFromPlacements(_bestPlacements);
 
@@ -125,9 +126,15 @@ var initialSolution = _bestPlacements.Concat(offsetFragileH1).ToList();
                         : 0;
                 }
 
-                BranchMain(sortedFragile, phase2Assignment,
-                           phase2OpenBins, lbFragile, fragilePhase: true,
-                           binOffset: bestPhase1Bins.Count);
+                int fragileCurrentBins = _bestPlacements.Count > 0
+                    ? _bestPlacements.Select(p => p.bin).Max() + 1 - bestPhase1Bins.Count
+                    : 0;
+                if (fragileCurrentBins > lbFragile)
+                {
+                    BranchMain(sortedFragile, phase2Assignment,
+                               phase2OpenBins, lbFragile, fragilePhase: true,
+                               binOffset: bestPhase1Bins.Count);
+                }
 
 bool allFragilePlaced = fragile.All(f =>
                     _bestPlacements.Any(p => p.instance.InstanceId == f.InstanceId));
@@ -270,7 +277,11 @@ double step = 0.1;
             var brutePlacements = ExtractPlacements(binsForRepack);
             int bruteBinsUsed = binsForRepack.Count(b => b.PlacedBoxes.Count > 0);
 
-            return BuildResult(brutePlacements, allBoxes, bruteBinsUsed, _isOptimal);
+            // Recompute _isOptimal after repack — the repack may reduce bin count below the pre-repack _bestBins
+            int overallLB = Math.Max(lowerBound, lbFragile);
+            bool finalIsOptimal = _isOptimal || (bruteBinsUsed == overallLB);
+
+            return BuildResult(brutePlacements, allBoxes, bruteBinsUsed, finalIsOptimal);
         }
 
 private void BranchMain(
@@ -284,6 +295,8 @@ private void BranchMain(
             _globalNodeCount++;
 
 if (_globalNodeCount > MaxGlobalNodes) return;
+
+if (_bestBins <= lowerBound) return;
 
 if (_stopwatch.Elapsed.TotalSeconds > TimeLimitSeconds)
             {
@@ -533,38 +546,39 @@ private SingleBinFiller CreateFiller() =>
             {
                 MaxFillHeightRatio = MaxFillHeightRatio
             };
-
+//פונקציה שמקבלת את נתוני הפתרון ומחזירה אותם לתמשתמש כתוצאה סופית
 private PackingResult BuildResult(
             List<(BoxInstance instance, int bin, Position3D pos, Rotation rot)> placements,
-            List<BoxInstance>                                                    allBoxes,
-            int                                                                  binsUsed,
-            bool                                                                 isOptimal)
+            List<BoxInstance> allBoxes,
+            int binsUsed,
+            bool isOptimal)
         {
-            var placedIds = placements.Select(p => p.instance.InstanceId).ToHashSet();
+            var placedIds = placements.Select(p => p.instance.InstanceId).ToHashSet();//ממירה את רשימת המיקומים לרשימת הארגזים כדי לבדוק אילו ארגזים שובצו בפועל
 
-var greedyUnplacedIds = _greedyUnplaced
+            var greedyUnplacedIds = _greedyUnplaced//בודק אילו ארגזים לא נארזו גם אחרי החמדני
                 .Select(b => b.InstanceId)
                 .ToHashSet();
 
-            var unplaced = allBoxes
+            var unplaced = allBoxes//בדיקה אלו ארגזים לא שובצו כלל לא על ידי החמדני ולא בכלל
                 .Where(b => !placedIds.Contains(b.InstanceId))
                 .Where(b =>  greedyUnplacedIds.Contains(b.InstanceId)
                           || !_greedyFallbackUsed)
                 .ToList();
-
-var rawPlaced = placements
+            //הופך כל שורה מרשימת המיקומים שקיבל למופע של ארגז ממוקם הכולל את מיקומו, אופן הסיבוב, באיזה מכולה נמצא וכו'
+            var rawPlaced = placements
                 .Select(p => new PlacedBox(p.instance, p.pos, p.rot) { BinIndex = p.bin })
                 .ToList();
-
-var placedBoxes = rawPlaced
+            //מחלק את הארגזים לפי מכולות ומפעיל על כל מכולה את ה-GravitySettler כדי לסדר את הארגזים בצורה יותר צפופה בתוך המכולה, ומחזיר רשימה חדשה של ארגזים ממוקמים לאחר הסידור
+            var placedBoxes = rawPlaced
                 .GroupBy(pb => pb.BinIndex)
                 .SelectMany(g => GravitySettler.Settle(g.ToList(), _container))
                 .ToList();
-
+            //חישוב הנפח הכולל
             double totalVolume = placedBoxes.Sum(pb => pb.Volume);
+            //חישוב הנפח שנוצל מתוך המכולות
             double binVolume   = _container.Volume * Math.Max(1, binsUsed);
-
-var perBinStats = Enumerable.Range(0, Math.Max(1, binsUsed)).Select(b =>
+            //חישוב סטטיסטיקות לכל מכולה בנפרד - כמה נפח נוצל וכמה נפח כולל יש במכולה
+            var perBinStats = Enumerable.Range(0, Math.Max(1, binsUsed)).Select(b =>
             {
                 double used = placedBoxes.Where(pb => pb.BinIndex == b).Sum(pb => pb.Volume);
                 return new BinStats
@@ -575,26 +589,32 @@ var perBinStats = Enumerable.Range(0, Math.Max(1, binsUsed)).Select(b =>
                 };
             }).ToList();
 
-string statusMessage;
+            string statusMessage;//בניית הודעת סטטוס
+            //אם הפתרון אופטימלי, מציג את מספר המכולות שנמצא
             if (isOptimal)
                 statusMessage = $"פתרון אופטימלי נמצא: {binsUsed} מכולות";
+            //אם לא אופטימלי אבל נעשה שימוש בפתרון חמדני והכל שובץ, מציג את מספר המכולות ומציין שלא מוכח כאופטימלי
             else if (_greedyFallbackUsed && _greedyUnplaced.Count == 0)
                 statusMessage = $"פתרון מלא (B&B + חמדני): {binsUsed} מכולות – לא מוכח כאופטימלי";
+            //אם לא אופטימלי ונעשה שימוש בפתרון חמדני אבל יש ארגזים שלא שובצו, מציג את מספר המכולות ומספר הארגזים שלא שובצו
             else if (_greedyFallbackUsed && _greedyUnplaced.Count > 0)
                 statusMessage = $"פתרון חלקי (B&B + חמדני): {binsUsed} מכולות, {_greedyUnplaced.Count} ארגזים לא שובצו";
+            //אם לא אופטימלי ולא נעשה שימוש בפתרון חמדני, מציג את מספר המכולות ומציין שזה פתרון טוב אבל לא מוכח כאופטימלי
             else
                 statusMessage = $"פתרון טוב (לא בהכרח אופטימלי): {binsUsed} מכולות";
 
+            //מחזיר את תוצאת האריזה הכוללת את הארגזים שהושמו, הארגזים שלא הושמו, מספר המכולות שנמצאו, ניצול הנפח, זמן הריצה, האם הפתרון אופטימלי והסטטיסטיקות לכל מכולה
             return new PackingResult
             {
-                PlacedBoxes       = placedBoxes,
-                UnplacedBoxes     = unplaced,
-                BinsUsed          = binsUsed,
-                VolumeUtilization = binVolume > 0 ? totalVolume / binVolume : 0,
-                SolveTime         = _stopwatch.Elapsed,
-                IsOptimal         = isOptimal,
-                StatusMessage     = statusMessage,
-                PerBinStats       = perBinStats
+                PlacedBoxes       = placedBoxes,//רשימת הארגזים שהושמו כולל מיקומם, סיבובם וכו'
+                UnplacedBoxes     = unplaced,//רשימת הארגזים שלא הושמו
+                BinsUsed          = binsUsed,//כמות המכולות שנמצאו
+                VolumeUtilization = binVolume > 0 ? totalVolume / binVolume : 0,//ניצול הנפח הכולל של המכולות
+                SolveTime         = _stopwatch.Elapsed,//זמן הריצה של האלגוריתם
+                IsOptimal         = isOptimal,//האם הפתרון אופטימלי
+                StatusMessage     = statusMessage,//הודעת סטטוס המתארת את הפתרון
+                PerBinStats       = perBinStats//סטטיסטיקות לכל מכולה בנפרד
+
             };
         }
     }

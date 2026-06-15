@@ -4,10 +4,12 @@ using OptiLoad.Core.Application.Algorithms;
 using OptiLoad.Core.Models;
 using OptiLoad.Core.Services;
 using OptiLoad.Data;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace OptiLoad.API.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/export")]
 public class ExportController : ControllerBase
@@ -20,6 +22,9 @@ public class ExportController : ControllerBase
         _db        = db;
         _snapshots = snapshots;
     }
+
+    private int GetCurrentAdminId() =>
+        int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     /// <summary>
     /// Exports the loading sequence table and snapshots for a packing job as a single JSON file.
@@ -43,6 +48,9 @@ public class ExportController : ControllerBase
 
         if (job == null || placements.Count == 0)
             return NotFound(new { error = $"Job {jobId} not found or has no placements." });
+
+        if (job.AdminId != GetCurrentAdminId())
+            return Forbid();
 
         // Convert PlacementResult → PlacedBox so LoadingSequencer can compute order
         var placedBoxes = placements.Select(ToPlacedBox).ToList();

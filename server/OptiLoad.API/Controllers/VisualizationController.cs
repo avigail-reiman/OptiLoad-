@@ -6,6 +6,7 @@ using OptiLoad.Core.Application.Algorithms;
 using OptiLoad.Core.Models;
 using OptiLoad.Core.Services;
 using OptiLoad.Data;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -28,6 +29,10 @@ public class VisualizationController : ControllerBase
         _packing = packing;
         _cache   = cache;
     }
+
+    //פונקציה ששולפת מתוך הJWT של המשתמש את מזהה המשתמש, כדי לשייך את העבודה שהוא מריץ אליו במסד הנתונים
+    private int GetCurrentAdminId() =>
+        int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
 [HttpGet("3d/{jobId:int}")]
     [Produces("text/html")]
@@ -104,7 +109,7 @@ var boxIds = new List<(int id, int qty)>();
 
 int containerId = await _db.CreateContainer(1, $"VIS-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}");
 
-int jobId = await _db.CreatePackingJob(containerId);
+int jobId = await _db.CreatePackingJob(containerId, GetCurrentAdminId());
         foreach (var (bid, qty) in boxIds)
             await _db.AddBoxToJob(jobId, bid, qty);
 
@@ -228,7 +233,7 @@ int templateId = await _db.UpsertContainerTemplate(container);
 
 int containerId = await _db.CreateContainer(templateId,
             $"VIS-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}");
-        int jobId = await _db.CreatePackingJob(containerId);
+        int jobId = await _db.CreatePackingJob(containerId, GetCurrentAdminId());
 
 var boxQtyByBoxId = new Dictionary<int, int>();
         foreach (var bc in request.Boxes)

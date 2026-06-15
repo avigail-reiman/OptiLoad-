@@ -1,0 +1,19 @@
+ביבליוגרפיה
+============
+
+ספרים ומאמרים
+https://doi.org/10.1287/opre.48.2.256.12386
+https://www.wiley.com/en-us/Knapsack+Problems-p-9780471924203
+https://www.amazon.com/Computers-Intractability-NP-Completeness-Mathematical-Sciences/dp/0716710455
+https://www.amazon.com/Approximation-Algorithms-NP-Hard-Problems-Hochbaum/dp/0534949681
+https://doi.org/10.1287/ijoc.1070.0250
+
+ASP.NET Core & SQL Server
+https://learn.microsoft.com/en-us/aspnet/core
+https://learn.microsoft.com/en-us/sql/sql-server
+
+ספריות
+https://github.com/DapperLib/Dapper
+https://threejs.org/docs
+https://xunit.net
+https://jwt.io

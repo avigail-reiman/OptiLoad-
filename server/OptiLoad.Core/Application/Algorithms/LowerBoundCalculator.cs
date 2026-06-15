@@ -6,23 +6,25 @@ using OptiLoad.Core.Models;
 namespace OptiLoad.Core.Algorithms
 {
 
-    public static class LowerBoundCalculator
+    public static class LowerBoundCalculator//חסמים לקיצוץ ענפים
     {
-
+//חסם תחתון L0
+//הפונקציה מקבלת את רשימת הארגזים שיש לארוז וכן את מידות המכולה ומחזירה את החסם.
 public static int ComputeL0(
             IEnumerable<BoxInstance> boxes,
             ContainerDimensions      container)
         {
-            double totalVolume = boxes.Sum(b => b.BoxDefinition.Volume);
-            return (int)Math.Ceiling(totalVolume / container.Volume);
+            double totalVolume = boxes.Sum(b => b.BoxDefinition.Volume);//מחשבת את סך הנפח של כל הארגזים
+            return (int)Math.Ceiling(totalVolume / container.Volume);//מחלקת את נפח הארגזים בנפח מכולה ומעגלת כלפי מעלה לקבלת כמות המכולות המינימלית
         }
-
+//חסם תחתון L1
+//הפונקציה מקבלת את רשימת הארגזים שיש לארוז וכן את מידות המכולה ומחזירה את החסם.
 public static int ComputeL1(
             IEnumerable<BoxInstance> boxes,
             ContainerDimensions      container)
         {
-            var boxList = boxes.ToList();
-
+            var boxList = boxes.ToList();//ממיר את רשימת הארגזים לרשימה כדי לאפשר גישה לפי אינדקס
+            //פונקציה לבדיקת כמות הארגזים ששתיים ממימדיהם הם יותר מחצי המכולה, לפי שילוב כל מימדים
             int l1WH = ComputeL1OneDim(boxList,
                 b => b.Width, b => b.Height, b => b.Depth,
                 container.Width, container.Height, container.Depth);
@@ -38,29 +40,30 @@ public static int ComputeL1(
             return Math.Max(l1WH, Math.Max(l1WD, l1HD));
         }
 
-        private static int ComputeL1OneDim(
-            List<BoxInstance> boxes,
-            Func<Box, double> getDim1,
-            Func<Box, double> getDim2,
-            Func<Box, double> getDim3,
-            double W, double H, double D)
-        {
-            
-            var jWH = boxes
-                .Where(b =>
-                {
-                    var box = b.BoxDefinition;
-                    return getDim1(box) > W / 2.0 && getDim2(box) > H / 2.0;
-                })
-                .ToList();
+private static int ComputeL1OneDim(
+    List<BoxInstance> boxes,
+    Func<Box, double> getDim1,
+    Func<Box, double> getDim2,
+    Func<Box, double> getDim3,
+    double W, double H, double D)
+    {
+            //קופסאות ש2 המימדים הראשונים גדולים מחצי
+        var jWH = boxes
+            .Where(b =>
+            {
+                var box = b.BoxDefinition;
+                return getDim1(box) > W / 2.0 && getDim2(box) > H / 2.0;
+            })
+            .ToList();
 
-            if (jWH.Count == 0) return 0;
+        if (jWH.Count == 0) return 0;
 
-int largeDepthCount = jWH.Count(b => getDim3(b.BoxDefinition) > D / 2.0);
+        //מתוך הקופסאות הנ"ל, קופסאות שגם המימד השלישי גדול מחצי מהמכולה  
+        int largeDepthCount = jWH.Count(b => getDim3(b.BoxDefinition) > D / 2.0);
 
-            int best = largeDepthCount;
+        int best = largeDepthCount;
 
-var pValues = jWH
+        var pValues = jWH
                 .Select(b => getDim3(b.BoxDefinition))
                 .Where(p => p >= 1 && p <= D / 2.0)
                 .Distinct()
@@ -76,7 +79,7 @@ var pValues = jWH
                     return d >= D - p && d <= D / 2.0;
                 }).ToList();
 
-var jS = jWH.Where(b =>
+                var jS = jWH.Where(b =>
                 {
                     double d = getDim3(b.BoxDefinition);
                     return d >= D / 2.0 && d <= p;
@@ -88,10 +91,10 @@ var jS = jWH.Where(b =>
                 double sumDl   = jL.Sum(b => getDim3(b.BoxDefinition));
                 int    countLarge = jWH.Count(b => getDim3(b.BoxDefinition) > D / 2.0);
 
-double numerator1 = sumDs - (jL.Count * D - sumDl);
+                double numerator1 = sumDs - (jL.Count * D - sumDl);
                 int    bound1     = countLarge + (int)Math.Ceiling(Math.Max(0, numerator1) / D);
 
-double floorDP    = Math.Floor(D / p);
+                double floorDP    = Math.Floor(D / p);
                 double sumFloors  = jL.Sum(b => Math.Floor(getDim3(b.BoxDefinition) / p));
                 double numerator2 = jS.Count - sumFloors;
                 int    bound2     = countLarge + (int)Math.Ceiling(Math.Max(0, numerator2) / floorDP);
@@ -197,6 +200,7 @@ double sumKvDepth  = kv.Sum(b => getDim3(b.BoxDefinition));
             return best;
         }
 
+//פונקציה שמקבלת מערך ארגזים ומכולה מסוימת ומחזירה את החסם התחתון ההדוק ביותר שמצאה מבין שלושת החסמים
 public static int ComputeBestLowerBound(
             IEnumerable<BoxInstance> boxes,
             ContainerDimensions      container)

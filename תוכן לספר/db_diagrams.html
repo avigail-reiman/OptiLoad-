@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>תרשימי מסד הנתונים OptiLoad - מוכנים להעתקה</title>
+    <!-- Load Mermaid -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .diagram-container {
+            background-color: #ffffff;  /* רקע לבן כפי שביקשת */
+            padding: 30px;
+            margin: 20px auto;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 1000px;
+            text-align: center;
+        }
+        h2 { text-align: center; color: #333; margin-bottom: 20px;}
+        .instructions { text-align: center; color: #666; margin-bottom: 20px; }
+        .mermaid { margin: 0 auto; display: flex; justify-content: center; }
+    </style>
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default', backgroundColor: '#ffffff' });
+    </script>
+</head>
+<body>
+
+    <div class="instructions">
+        <h1>תרשימי מסד הנתונים - פרויקט OptiLoad (פרק 22)</h1>
+        <p>תרשימים אלו מעוצבים על רקע לבן נקי לחלוטין. להדבקה בוורד, גזרו אותם באמצעות "כלי החיתוך" (Snipping Tool) של Windows או שמרו כתמונה.</p>
+    </div>
+
+    <!-- DSD Diagram -->
+    <div class="diagram-container">
+        <h2>תרשים DSD קלאסי (רמת ישויות ותכונות)</h2>
+        <div class="mermaid">
+        classDiagram
+            class Admin {
+                +int Id [PK]
+                +string Username
+            }
+            class PackingSession {
+                +int SessionId [PK]
+                +int AdminId [FK]
+                +string Name
+                +string Status
+            }
+            class SessionUser {
+                +int SessionUserId [PK]
+                +int SessionId [FK]
+                +string DisplayName
+            }
+            class Box {
+                +int BoxId [PK]
+                +string BoxName
+                +float Measurements
+                +float WeightKg
+                +bool IsFragile
+                +bool AllowRotation
+            }
+            class Container {
+                +int ContainerId [PK]
+                +int TemplateId [FK]
+                +string ContainerCode
+            }
+            class PackingJob {
+                +int JobId [PK]
+                +int ContainerId [FK]
+                +int AdminId [FK]
+                +string Status
+                +float VolumeUtilization
+            }
+            class PlacementResult {
+                +int PlacementId [PK]
+                +int JobId [FK]
+                +int BoxId [FK]
+                +float PosX
+                +float PosY
+                +float PosZ
+                +int RotationIndex
+            }
+            
+            Admin "1" -- "*" PackingSession : מנהל
+            Admin "1" -- "*" PackingJob : יוזם
+            PackingSession "1" -- "*" SessionUser : מארח
+            Container "1" -- "*" PackingJob : רץ עליה
+            PackingJob "1" -- "*" PlacementResult : מפיק
+            Box "1" -- "*" PlacementResult : ממוקם בתוך
+        </div>
+    </div>
+
+    <!-- ERD Diagram -->
+    <div class="diagram-container">
+        <h2>תרשים ERD (מערכות יחסים בין כל טבלאות המערכת)</h2>
+        <div class="mermaid">
+        erDiagram
+            ADMIN ||--o{ PACKINGJOB : " "
+            ADMIN ||--o{ PACKINGSESSION : " "
+            CONTAINERTEMPLATE ||--o{ CONTAINER : " "
+            CONTAINER ||--o{ PACKINGJOB : " "
+            PACKINGJOB ||--o{ PACKINGJOBBOX : " "
+            PACKINGJOB ||--o{ PLACEMENTRESULT : " "
+            PACKINGJOB ||--o{ CONTAINERSNAPSHOT : " "
+            BOX ||--o{ PACKINGJOBBOX : " "
+            BOX ||--o{ PLACEMENTRESULT : " "
+            BOX ||--o{ SESSIONBOX : " "
+            PACKINGSESSION ||--o{ SESSIONUSER : " "
+            PACKINGSESSION ||--o{ ACCESSREQUEST : " "
+            PACKINGSESSION ||--o{ SESSIONBOX : " "
+            PACKINGSESSION ||--o{ BOXAUDITLOG : " "
+            SESSIONUSER ||--o{ ACCESSREQUEST : " "
+        </div>
+    </div>
+</body>
+</html>

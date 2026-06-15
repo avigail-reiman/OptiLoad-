@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using OptiLoad.Core.Models;
 using OptiLoad.Core.Services;
 using OptiLoad.Data;
+using System.Security.Claims;
 
 namespace OptiLoad.API.Controllers
 {
@@ -20,10 +21,13 @@ namespace OptiLoad.API.Controllers
             _packingService = packingService;
         }
 
+        private int GetCurrentAdminId() =>
+            int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<PackingJob>>> GetAll()
         {
-            var jobs = await _db.GetAllJobs();
+            var jobs = await _db.GetAllJobs(GetCurrentAdminId());
             return Ok(jobs);
         }
 
@@ -32,13 +36,14 @@ namespace OptiLoad.API.Controllers
         {
             var job = await _db.GetJobById(id);
             if (job == null) return NotFound();
+            if (job.AdminId != GetCurrentAdminId()) return Forbid();
             return Ok(job);
         }
 
         [HttpPost]
         public async Task<ActionResult<int>> Create([FromBody] CreateJobRequest request)
         {
-            int jobId = await _db.CreatePackingJob(request.ContainerId);
+            int jobId = await _db.CreatePackingJob(request.ContainerId, GetCurrentAdminId());
             foreach (var item in request.Boxes)
                 await _db.AddBoxToJob(jobId, item.BoxId, item.Quantity);
             return CreatedAtAction(nameof(GetById), new { id = jobId }, jobId);
@@ -49,6 +54,7 @@ namespace OptiLoad.API.Controllers
         {
             var job = await _db.GetJobById(id);
             if (job == null) return NotFound();
+            if (job.AdminId != GetCurrentAdminId()) return Forbid();
             var result = await _packingService.RunPackingJob(id);
             return Ok(result);
         }
@@ -56,6 +62,9 @@ namespace OptiLoad.API.Controllers
         [HttpGet("{id}/placements")]
         public async Task<ActionResult<IEnumerable<PlacementResult>>> GetPlacements(int id)
         {
+            var job = await _db.GetJobById(id);
+            if (job == null) return NotFound();
+            if (job.AdminId != GetCurrentAdminId()) return Forbid();
             var placements = await _db.GetPlacementResults(id);
             return Ok(placements);
         }
@@ -65,6 +74,7 @@ namespace OptiLoad.API.Controllers
         {
             var job = await _db.GetJobById(id);
             if (job == null) return NotFound();
+            if (job.AdminId != GetCurrentAdminId()) return Forbid();
             await _db.DeleteJob(id);
             return NoContent();
         }

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Class Diagram — Data Layer</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#666;font-family:Arial,sans-serif}
+  .page{width:277mm;background:#fff;margin:22px auto;padding:10mm 11mm;box-shadow:0 2px 18px rgba(0,0,0,.45)}
+  h2{font-size:15pt;color:#0f172a;text-align:center;border-bottom:2px solid #7c3aed;padding-bottom:3mm;margin-bottom:2mm}
+  .subtitle{font-size:10pt;color:#475569;text-align:center;margin-bottom:4mm}
+  .sec{font-size:10pt;color:#7c3aed;font-weight:bold;margin:5mm 0 2mm;border-right:3px solid #7c3aed;padding-right:2mm;text-align:right}
+  .mermaid{width:100%;display:flex;justify-content:center;background:#fff}
+  .mermaid svg{max-width:100%!important;height:auto!important;background:#fff!important}
+  @media print{body{background:#fff}.page{margin:0;box-shadow:none;width:100%}}
+</style>
+</head>
+<body>
+<div class="page">
+  <h2>Data Layer — Infrastructure</h2>
+  <p class="subtitle">OptiLoad.Data — Dapper + SQL Server</p>
+
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#ede9fe","primaryTextColor":"#0f172a","primaryBorderColor":"#7c3aed","lineColor":"#334155","secondaryColor":"#dcfce7","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":12,"useMaxWidth":true}}}%%
+classDiagram
+  direction TB
+  class IPackingRepository {
+    &lt;&lt;interface&gt;&gt;
+    GetContainerDimensions(int jobId) ContainerDimensions+
+    GetJobBoxInstances(int jobId) List+
+    SavePlacementResults(int, PackingResult)+
+    CompleteJob(int, PackingResult)+
+  }
+  class IAdminRepository {
+    &lt;&lt;interface&gt;&gt;
+    GetAdminByUsername(string username) Admin+
+    AdminsExist() bool+
+    CreateAdmin(string,string,string)+
+  }
+  class ISessionRepository {
+    &lt;&lt;interface&gt;&gt;
+    GetSessionsByAdminAsync(int adminId) List+
+    CreateSessionAsync(int,string,string,string) int+
+    GetSessionBoxesAsync(int sessionId) List+
+    AddSessionBoxAsync(int,int,int,string) int+
+    DeleteSessionBoxAsync(int,int) bool+
+    UpdateSessionBoxQuantityAsync(int,int,int) bool+
+    GetAuditLogAsync(int sessionId) List+
+    AddAuditLogAsync(BoxAuditLog)+
+  }
+  class ISnapshotRepository {
+    &lt;&lt;interface&gt;&gt;
+    SaveSnapshotsAsync(int, IEnumerable)+
+    GetSnapshotsAsync(int jobId) List+
+    DeleteSnapshotsAsync(int jobId)+
+  }
+  class DatabaseService {
+    string _connectionString-
+    GetAllBoxes() List+
+    GetBoxById(int id) Box+
+    CreateBox(Box box) int+
+    UpdateBox(Box box)+
+    DeleteBox(int id)+
+    GetJob(int jobId) PackingJob+
+    CompleteJob(int, PackingResult)+
+    GetContainerDimensions(int) ContainerDimensions+
+    GetJobBoxInstances(int) List+
+    GetAdmin(string username) Admin+
+    AdminsExist() bool+
+    CreateAdmin(string,string,string)+
+    GetContainerTemplates() List+
+  }
+  class DatabaseSessionService {
+    string _connectionString-
+    GetSessionsByAdminAsync(int) List+
+    CreateSessionAsync(int,string,string,string) int+
+    DeleteSessionAsync(int)+
+    GetSessionBoxesAsync(int) List+
+    AddSessionBoxAsync(int,int,int,string) int+
+    DeleteSessionBoxAsync(int,int) bool+
+    UpdateSessionBoxQuantityAsync(int,int,int) bool+
+    GetAuditLogAsync(int) List+
+    AddAuditLogAsync(BoxAuditLog)+
+    GetRequestsBySessionAsync(int) List+
+    UpdateRequestStatusAsync(int,string)+
+    SaveSnapshotsAsync(int, IEnumerable)+
+    GetSnapshotsAsync(int) List+
+  }
+  DatabaseService ..|> IPackingRepository : implements
+  DatabaseService ..|> IAdminRepository : implements
+  DatabaseSessionService ..|> ISessionRepository : implements
+  DatabaseSessionService ..|> ISnapshotRepository : implements
+  </div>
+</div>
+<script>mermaid.initialize({startOnLoad:true})</script>
+</body>
+</html>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#666;font-family:Arial,sans-serif}
+  .page{width:277mm;background:#fff;margin:22px auto;padding:10mm 11mm;box-shadow:0 2px 18px rgba(0,0,0,.45)}
+  h2{font-size:15pt;color:#0f172a;text-align:center;border-bottom:2px solid #7c3aed;padding-bottom:3mm;margin-bottom:2mm}
+  .subtitle{font-size:10pt;color:#475569;text-align:center;margin-bottom:5mm}
+  .sec{font-size:10pt;color:#7c3aed;font-weight:bold;margin:5mm 0 2mm;border-right:3px solid #7c3aed;padding-right:2mm}
+  .mermaid{width:100%;display:flex;justify-content:center;background:#fff}
+  .mermaid svg{max-width:100%!important;height:auto!important;background:#fff!important}
+  @media print{body{background:#fff}.page{margin:0;box-shadow:none;width:100%}}
+</style>
+</head>
+<body>
+<div class="page">
+  <h2>Data Layer — Infrastructure</h2>
+  <p class="subtitle">OptiLoad.Data — Dapper + SQL Server</p>
+
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#ede9fe","primaryTextColor":"#0f172a","primaryBorderColor":"#7c3aed","lineColor":"#334155","secondaryColor":"#dcfce7","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":12,"useMaxWidth":true}}}%%
+classDiagram
+  direction TB
+  class IPackingRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetContainerDimensions(int)
+    +GetJobBoxInstances(int) List
+    +SavePlacementResults(int, PackingResult)
+    +CompleteJob(int, PackingResult)
+  }
+  class IAdminRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetAdminByUsername(string) Admin
+    +AdminsExist() bool
+    +CreateAdmin(string,string,string)
+  }
+  class ISessionRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetSessionsByAdminAsync(int) List
+    +CreateSessionAsync(...) int
+    +GetSessionBoxesAsync(int) List
+    +AddSessionBoxAsync(...) int
+    +DeleteSessionBoxAsync(int,int) bool
+    +UpdateSessionBoxQuantityAsync(...) bool
+    +GetAuditLogAsync(int) List
+    +AddAuditLogAsync(BoxAuditLog)
+  }
+  class ISnapshotRepository {
+    &lt;&lt;interface&gt;&gt;
+    +SaveSnapshotsAsync(int, IEnumerable)
+    +GetSnapshotsAsync(int) List
+    +DeleteSnapshotsAsync(int)
+  }
+  class DatabaseService {
+    -string _connectionString
+    +GetAllBoxes() / GetBoxById(int)
+    +CreateBox(Box) / UpdateBox() / DeleteBox()
+    +GetJob(int) / CreateJob(int,int) int
+    +CompleteJob(int, PackingResult)
+    +GetContainerDimensions(int)
+    +GetJobBoxInstances(int) List
+    +GetAdmin(string) / CreateAdmin()
+    +GetContainerTemplates() List
+  }
+  class DatabaseSessionService {
+    -string _connectionString
+    +GetSessionsByAdminAsync(int) List
+    +CreateSessionAsync(...) int
+    +DeleteSessionAsync(int)
+    +GetSessionBoxesAsync(int) List
+    +AddSessionBoxAsync(...) int
+    +DeleteSessionBoxAsync(int,int) bool
+    +UpdateSessionBoxQuantityAsync(...) bool
+    +GetAuditLogAsync(int) List
+    +AddAuditLogAsync(BoxAuditLog)
+    +SaveSnapshotsAsync() / GetSnapshotsAsync()
+    +GetRequestsBySessionAsync(int) List
+    +UpdateRequestStatusAsync(int,string)
+  }
+  DatabaseService ..|> IPackingRepository : implements
+  DatabaseService ..|> IAdminRepository : implements
+  DatabaseSessionService ..|> ISessionRepository : implements
+  DatabaseSessionService ..|> ISnapshotRepository : implements
+  </div>
+</div>
+<script>mermaid.initialize({startOnLoad:true})</script>
+</body>
+</html>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #666; font-family: Arial, sans-serif; }
+  .page {
+    width: 277mm;
+    background: #ffffff;
+    margin: 22px auto;
+    padding: 10mm 11mm;
+    box-shadow: 0 2px 18px rgba(0,0,0,0.45);
+  }
+  h2 {
+    font-size: 15pt;
+    color: #0f172a;
+    text-align: center;
+    border-bottom: 2px solid #7c3aed;
+    padding-bottom: 3mm;
+    margin-bottom: 5mm;
+  }
+  .subtitle {
+    font-size: 10pt;
+    color: #475569;
+    text-align: center;
+    margin-bottom: 5mm;
+    margin-top: -3mm;
+  }
+  .section-title {
+    font-size: 11pt;
+    color: #7c3aed;
+    font-weight: bold;
+    margin: 6mm 0 3mm 0;
+    border-right: 4px solid #7c3aed;
+    padding-right: 3mm;
+  }
+  .mermaid {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    background: #ffffff;
+  }
+  .mermaid svg {
+    max-width: 100% !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; box-shadow: none; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <h2>תרשים מחלקות — שכבת Data (Infrastructure)</h2>
+  <p class="subtitle">OptiLoad.Data — מימוש גישה ל-SQL Server באמצעות Dapper</p>
+
+  <p class="section-title">DatabaseService — ארגזים, עבודות, מכולות</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#ede9fe","primaryTextColor":"#0f172a","primaryBorderColor":"#7c3aed","lineColor":"#334155","fontFamily":"Arial","fontSize":"12px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction TB
+
+  class IPackingRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetContainerDimensions(int) ContainerDimensions
+    +GetJobBoxInstances(int) List
+    +SavePlacementResults(int, PackingResult)
+    +CompleteJob(int, PackingResult)
+    +LogError(int, string, Exception)
+  }
+
+  class IAdminRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetAdminByUsername(string) Admin
+    +AdminsExist() bool
+    +CreateAdmin(string,string,string)
+  }
+
+  class DatabaseService {
+    -string _connectionString
+    +GetBoxes(int adminId) List
+    +GetBoxById(int) Box
+    +GetAllBoxes() List
+    +CreateBox(Box) int
+    +UpdateBox(Box)
+    +DeleteBox(int)
+    +GetJob(int) PackingJob
+    +GetJobsByAdmin(int) List
+    +CreateJob(int adminId, int containerId) int
+    +CompleteJob(int, PackingResult)
+    +GetContainerDimensions(int) ContainerDimensions
+    +GetJobBoxInstances(int) List
+    +GetAdmin(string) Admin
+    +AdminsExist() bool
+    +CreateAdmin(string,string,string)
+    +GetContainerTemplates() List
+    +CreateContainerTemplate(ContainerTemplate) int
+    +SavePlacementResults(int, PackingResult)
+    +LogError(int, string, Exception)
+  }
+
+  DatabaseService ..|> IPackingRepository : implements
+  DatabaseService ..|> IAdminRepository : implements
+  </div>
+
+  <p class="section-title">DatabaseSessionService — סשנים, משתמשים, יומן</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#ede9fe","primaryTextColor":"#0f172a","primaryBorderColor":"#7c3aed","lineColor":"#334155","fontFamily":"Arial","fontSize":"12px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction TB
+
+  class ISessionRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetSessionsByAdminAsync(int) List
+    +GetSessionByIdAsync(int) PackingSession
+    +CreateSessionAsync(int,string,string,string) int
+    +UpdateSessionStatusAsync(int,string)
+    +DeleteSessionAsync(int)
+    +GetSessionBoxesAsync(int) List
+    +AddSessionBoxAsync(int,int,int,string) int
+    +DeleteSessionBoxAsync(int,int) bool
+    +GetAuditLogAsync(int) List
+    +AddAuditLogAsync(BoxAuditLog)
+    +GetRequestsBySessionAsync(int) List
+    +UpdateRequestStatusAsync(int,string)
+  }
+
+  class ISnapshotRepository {
+    &lt;&lt;interface&gt;&gt;
+    +SaveSnapshotsAsync(int, IEnumerable)
+    +GetSnapshotsAsync(int) List
+    +DeleteSnapshotsAsync(int)
+  }
+
+  class DatabaseSessionService {
+    -string _connectionString
+    +GetSessionsByAdminAsync(int) List
+    +GetSessionByIdAsync(int) PackingSession
+    +GetSessionByTokenAsync(string) PackingSession
+    +CreateSessionAsync(int,string,string,string) int
+    +UpdateSessionStatusAsync(int,string)
+    +DeleteSessionAsync(int)
+    +GetSessionUserByTokenAsync(string) SessionUser
+    +CreateSessionUserAsync(int,string,string,string,string) int
+    +GetRootTokenAsync(string) string
+    +GetRequestsBySessionAsync(int) List
+    +GetRequestByUserTokenAsync(string) AccessRequest
+    +CreateAccessRequestAsync(int,int) int
+    +UpdateRequestStatusAsync(int,string)
+    +GetSessionBoxesAsync(int) List
+    +AddSessionBoxAsync(int,int,int,string) int
+    +DeleteSessionBoxAsync(int,int) bool
+    +GetAuditLogAsync(int) List
+    +AddAuditLogAsync(BoxAuditLog)
+    +SaveSnapshotsAsync(int, IEnumerable)
+    +GetSnapshotsAsync(int) List
+    +DeleteSnapshotsAsync(int)
+  }
+
+  DatabaseSessionService ..|> ISessionRepository : implements
+  DatabaseSessionService ..|> ISnapshotRepository : implements
+  </div>
+
+  <p class="section-title">ארכיטקטורת שכבות — תרשים תלויות</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dbeafe","primaryTextColor":"#0f172a","primaryBorderColor":"#1d4ed8","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"}}}%%
+flowchart TB
+  subgraph L3["שכבת API — OptiLoad.API"]
+    C["Controllers\n(Auth, Box, Session, Visualization,\nSnapshot, PackingJob, Export, Container)"]
+    S2["Services\n(LoginRateLimiter)"]
+  end
+  subgraph L2["שכבת Application — OptiLoad.Core/Application"]
+    SVC["Services\n(AdminService, PackingService)"]
+    ALG["Algorithms\n(BranchAndBound, Greedy,\nHeuristicH1, CornerPoints,\nGravity, LowerBound,\nSequencer, SingleBinFiller)"]
+  end
+  subgraph L1["שכבת Domain — OptiLoad.Core/Domain"]
+    MOD["Models\n(Admin, Box, PackingJob,\nPackingSession, SessionBox,\nBoxAuditLog, PackingResult...)"]
+    INT["Interfaces\n(IAdminRepository, IPackingRepository,\nISessionRepository, ISnapshotRepository)"]
+  end
+  subgraph L4["שכבת Data — OptiLoad.Data"]
+    DB["DatabaseService\nimplements IPackingRepository + IAdminRepository"]
+    DBS["DatabaseSessionService\nimplements ISessionRepository + ISnapshotRepository"]
+  end
+  subgraph EXT["תשתית"]
+    SQL[("SQL Server LocalDB")]
+  end
+
+  L3 --> L2
+  L3 --> INT
+  L2 --> L1
+  L4 .->|implements| INT
+  L4 --> SQL
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true });
+</script>
+</body>
+</html>

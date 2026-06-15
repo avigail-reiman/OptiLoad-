@@ -1,26 +1,26 @@
 ﻿using System;
 
-namespace OptiLoad.Core.Models
+namespace OptiLoad.Core.Models//מודלים שמייצגים את המכולות שבהן נארזות הקופסאות, כולל מידות המכולה, סטטוס האריזה והקוד שלה
 {
 
-    public class Container
+    public class Container//מודל שמייצג מכולה שבה נארזות הקופסאות, כולל מזהה ייחודי, מזהה תבנית, קוד המכולה, סטטוס האריזה ותאריך יצירה
     {
-        public int               ContainerId   { get; set; }
-        public int               TemplateId    { get; set; }
-        public string            ContainerCode { get; set; } = string.Empty;
-        public ContainerStatus   Status        { get; set; } = ContainerStatus.Available;
+        public int               ContainerId   { get; set; }//מזהה ייחודי של המכולה במסד הנתונים, משמש לזיהוי המכולה ולקשר אותה לטבלאות אחרות במסד הנתונים
+        public int               TemplateId    { get; set; }//מזהה של תבנית המכולה שמגדירה את המידות והמשקל המקסימלי שלה, משמש לקשר בין המכולה לתבנית שלה במסד הנתונים
+        public string            ContainerCode { get; set; } = string.Empty;//קוד ייחודי של המכולה שמורכב מאותיות ומספרים, משמש לזיהוי המכולה בממשק המשתמש ובתיעוד
+        public ContainerStatus   Status        { get; set; } = ContainerStatus.Available;//סטטוס האריזה של המכולה, יכול להיות זמין (Available), בתהליך אריזה (Loading) או סגור (Closed), משמש לקביעת האם ניתן להוסיף קופסאות למכולה או לא
         public DateTime          CreatedAt     { get; set; }
 
-public ContainerTemplate? Template { get; set; }
+public ContainerTemplate? Template { get; set; }//הפניה לתבנית המכולה שמכילה את המידות והמשקל המקסימלי שלה, משמשת לגישה נוחה לנתונים של התבנית בעת הצורך בממשק המשתמש ובתיעוד
 
-        public override string ToString() =>
+        public override string ToString() =>//הפונקציה מחזירה את המכולה כמחרוזת עם הקוד והסטטוס שלה, לשימוש בממשק המשתמש ובתיעוד
             $"Container[{ContainerCode}] Status={Status}";
     }
 
-    public enum ContainerStatus
+    public enum ContainerStatus//enum שמייצג את הסטטוס של המכולה, יכול להיות זמין (Available), בתהליך אריזה (Loading) או סגור (Closed), משמש לקביעת האם ניתן להוסיף קופסאות למכולה או לא
     {
-        Available,
-        Loading,
-        Closed
+        Available,//המכולה זמינה וניתן להוסיף לה קופסאות
+        Loading,//המכולה בתהליך אריזה וניתן להוסיף לה קופסאות, אך היא עדיין לא סגורה
+        Closed//המכולה סגורה ולא ניתן להוסיף לה קופסאות, משמשת לציון שהאריזה של המכולה הושלמה
     }
 }

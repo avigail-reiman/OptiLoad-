@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>15.9 תרשים UML — OptiLoad</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #555; font-family: Arial, sans-serif; }
+
+  .page {
+    width: 190mm;
+    background: #ffffff;
+    margin: 24px auto;
+    padding: 12mm 11mm;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.5);
+    min-height: 277mm;
+  }
+
+  h2 {
+    font-size: 15pt;
+    color: #0f172a;
+    text-align: center;
+    border-bottom: 2.5px solid #1d4ed8;
+    padding-bottom: 3mm;
+    margin-bottom: 3mm;
+  }
+
+  .subtitle {
+    font-size: 9.5pt;
+    color: #475569;
+    text-align: center;
+    margin-bottom: 6mm;
+  }
+
+  .mermaid {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    background: #ffffff;
+  }
+
+  .mermaid svg {
+    max-width: 100% !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; box-shadow: none; width: 100%; min-height: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <h2>15.9 תרשים UML — ארכיטקטורת המערכת OptiLoad</h2>
+  <p class="subtitle">Clean Architecture · 4 פרויקטים · 5 שכבות · תלויות חד-סטריות לכיוון הגרעין</p>
+
+  <div class="mermaid">
+%%{init:{
+  "theme":"base",
+  "themeVariables":{
+    "background":"#ffffff",
+    "primaryColor":"#dbeafe",
+    "primaryTextColor":"#0f172a",
+    "primaryBorderColor":"#1d4ed8",
+    "lineColor":"#334155",
+    "secondaryColor":"#e0f2fe",
+    "tertiaryColor":"#dcfce7",
+    "fontFamily":"Arial",
+    "fontSize":"11.5px"
+  },
+  "flowchart":{"nodeSpacing":22,"rankSpacing":44,"padding":16,"useMaxWidth":true,"curve":"linear"}
+}}%%
+flowchart TB
+  CL["שכבת ממשק לקוח — Client\n( HTML / CSS / JavaScript / Three.js )\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nlogin.html  ·  01_main-packing-interface.html  ·  02_3d-result-viewer.html\n03_snapshot-viewer.html  ·  04_sessions-manager.html  ·  05_user-join.html"]
+
+  API["שכבת API — OptiLoad.API  ( ASP.NET Core Web API · פורט 5098 )\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n8 Controllers: AuthController · BoxController · ContainerController · PackingJobController\nVisualizationController · SnapshotController · SessionController · ExportController\nJWT Middleware ( HMAC-SHA256 · תפוגה 2h )  ·  LoginRateLimiter ( 3 ניסיונות / 15 דק' / IP )"]
+
+  CORE["שכבת גרעין — OptiLoad.Core  ( ללא תלויות חיצוניות )\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nAlgorithms: BranchAndBoundSolver ( DFS · L0/L1/L2 Pruning · 10M nodes · 300s )\nHeuristicH1 → SingleBinFiller  ·  GreedySolver ( Fallback )\nCornerPointsFinder · GravitySettler · LowerBoundCalculator · LoadingSequencer\n─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─\nServices: PackingService · AdminService · PasswordHasher ( HMAC-SHA256 )\n─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─\nDomain: Admin · Box · ContainerTemplate · PackingJob · PackingJobBox\nPlacementResult · ContainerSnapshot · PackingSession · SessionUser · SessionBox\nBoxInstance · PlacedBox · PackingState · PackingResult · Position3D · Rotation\n─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─\nInterfaces: IPackingRepository · IAdminRepository · ISnapshotRepository · ISessionRepository"]
+
+  DATA["שכבת נתונים — OptiLoad.Data  ( ADO.NET · Parameterized Queries · ללא ORM )\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nDatabaseService  →  implements: IPackingRepository + IAdminRepository + ISnapshotRepository\nDatabaseSessionService  →  implements: ISessionRepository"]
+
+  DB[("מסד נתונים — SQL Server LocalDB  ( OptiLoadDB )\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nAdmins · Boxes · ContainerTemplates · PackingJobs\nPlacementResults · ContainerSnapshots · Sessions · SessionUsers")]
+
+  TST>"בדיקות — OptiLoad.Tests  ( xUnit · 20 בדיקות עוברות )\nBoxTests · BranchAndBoundTests · GreedySolverTests · LowerBoundTests"]
+
+  CL   -->|"HTTP / REST  ( Fetch API )"| API
+  API  -->|"Dependency Injection"| CORE
+  API  -->|"Dependency Injection"| DATA
+  DATA -.->|"מממשת ממשקי Core"| CORE
+  DATA -->|"ADO.NET"| DB
+  TST  -..->|"בדיקות ישירות ← ללא DB ← ללא HTTP"| CORE
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: "loose" });
+</script>
+</body>
+</html>

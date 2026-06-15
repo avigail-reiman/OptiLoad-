@@ -1,0 +1,436 @@
+בס"ד
+
+פרק 21: קוד התוכנית – על פי סטנדרטים בליווי תיעוד
+====================================================
+
+
+21.1  קלט
+------------------------------------------------------------------------
+
+המערכת מקבלת שני סוגי קלט: קלט ישיר מהמשתמש דרך הממשק הגרפי, וקלט
+הנשמר ומשוחזר ממסד הנתונים.
+
+
+קלט מהמשתמש
+
+המשתמש מזין את הנתונים הבאים כדי להפעיל את אלגוריתם השיבוץ:
+
+פרטי הקונטיינר:
+  Width        – רוחב הקונטיינר (ס"מ), ערכים מותרים: 1 עד 10,000
+  Height       – גובה הקונטיינר (ס"מ), ערכים מותרים: 1 עד 10,000
+  Depth        – עומק הקונטיינר (ס"מ), ערכים מותרים: 1 עד 10,000
+  MaxWeightKg  – מגבלת המשקל הכוללת (ק"ג), ערכים מותרים: 0 עד 1,000,000
+
+פרטי הארגזים – לכל ארגז ברשימה:
+  Name          – שם מזהה לארגז, חובה, בין 1 ל-100 תווים
+  W, H, D       – מידות הארגז ברוחב, גובה ועומק (ס"מ), חובה, ערכים: 1 עד 10,000
+  Weight        – משקל הארגז (ק"ג), ערכים: 0 עד 100,000
+  Fragile       – סימון האם הארגז שביר (כן/לא)
+  AllowRotation – האם מותר לסובב את הארגז (כן/לא)
+  Qty           – כמות היחידות מסוג זה, ערכים: 1 עד 10,000
+
+פרמטרי הרצה:
+  TimeLimitSeconds – מגבלת הזמן המקסימלית לריצת האלגוריתם (שניות), ברירת מחדל: 10
+  LoadingFace      – כיוון הפתיחה של הקונטיינר לצורך חישוב סדר הטעינה:
+                     Front (קדמי), Back (אחורי), Left (שמאלי), Right (ימני)
+
+כל שדות הקלט מאומתים לפני הגעה לאלגוריתם. קלט לא תקין כגון מידות
+שליליות, רשימת ארגזים ריקה או חריגה מטווחי הערכים המותרים — גורם
+לדחיית הבקשה בהודעת שגיאה מתאימה.
+
+
+קלט ממסד הנתונים
+
+בנוסף לקלט הישיר, המערכת תומכת בשמירת ארגזים וקונטיינרים במסד הנתונים
+מראש. המשתמש בוחר משימה שמורה לפי מספרה, והמערכת שולפת את כל הנתונים
+הרלוונטיים אוטומטית.
+
+
+21.2  פלט
+------------------------------------------------------------------------
+
+לאחר הרצת האלגוריתם, המערכת מחזירה את תוצאות השיבוץ בשלושה פורמטים:
+
+
+תוצאת השיבוץ (PackingResult)
+
+התוצאה המרכזית כוללת את השדות הבאים:
+
+  BinsUsed          – מספר הקונטיינרים שנדרשו לאריזת כלל הארגזים
+  VolumeUtilization – אחוז ניצולת הנפח הכולל (ערך בין 0 ל-1)
+  IsOptimal         – האם הפתרון מובטח אופטימלי (כן/לא)
+  StatusMessage     – הודעת סטטוס מילולית על תוצאת הריצה
+  SolveTime         – זמן החישוב בפועל
+  PlacedBoxes       – רשימת כל הארגזים שמוקמו בהצלחה; לכל ארגז:
+                        x1, y1, z1 – קואורדינטות נקודת ההתחלה (ס"מ)
+                        x2, y2, z2 – קואורדינטות נקודת הסיום (ס"מ)
+                        binIndex   – מספר הקונטיינר שבו הוצב
+                        isFragile  – האם הארגז שביר
+  UnplacedBoxes     – רשימת ארגזים שלא ניתן היה לשבץ, אם קיימים
+  PerBinStats       – סטטיסטיקות לכל קונטיינר בנפרד:
+                        UsedVolume         – נפח מנוצל (סמ"ק)
+                        TotalVolume        – נפח כולל (סמ"ק)
+                        UtilizationPercent – אחוז ניצולת
+                        WastedPercent      – אחוז בזבוז
+
+
+ייצוא לשימוש חיצוני
+
+המערכת מאפשרת ייצוא תכנית הטעינה כקובץ JSON הכולל את סדר הטעינה
+המחושב לפי כיוון הדלת. הקובץ מיועד לשימוש במערכות חיצוניות כגון
+עמדות עבודה בשטח. כל שורה בקובץ מייצגת ארגז אחד ומכילה:
+  loadingStep  – מספר הצעד בסדר הטעינה (1, 2, 3, ...)
+  boxName      – שם הארגז
+  x, y, z      – קואורדינטות המיקום הסופי
+  width, height, depth – מידות הארגז בפועל לאחר סיבוב
+  binIndex     – מספר הקונטיינר
+  isFragile    – האם הארגז שביר
+
+
+תצוגה תלת-ממדית
+
+המערכת מייצרת דף ויזואליזציה אינטראקטיבי המציג את הקונטיינר ותוכנו
+בתלת-ממד. התצוגה מאפשרת סיבוב, הגדלה וניווט חופשי. כל ארגז מוצג
+בצבע נפרד, ארגזים שבירים מסומנים בצבע מיוחד, ופאנל הנתונים מציג
+את אחוז הניצולת, זמן החישוב, מספר הקונטיינרים ומידת האופטימליות.
+
+
+21.3  פונקציות קריטיות/חשובות/עיקריות
+------------------------------------------------------------------------
+
+להלן הפונקציות המרכזיות במערכת, מסודרות לפי שכבות הארכיטקטורה.
+
+
+21.3.1  GetAllowedRotations — חישוב כיוני הסיבוב החוקיים של ארגז
+                              (Box.cs)
+------------------------------------------------------------------------
+
+פונקציה זו מחשבת את כל הכיוונים שבהם מותר להניח ארגז נתון.
+לכל ארגז קיימים ששה כיוני סיבוב אפשריים. כאשר שני ממדים שווים,
+מספר הכיוונים הייחודיים קטן. לדוגמה, קוביה בגודל 2×2×2 מחזירה כיוון
+אחד בלבד. הפונקציה משתמשת ב-HashSet למניעת כפולות.
+
+  public IEnumerable<Rotation> GetAllowedRotations()
+  {
+      if (!AllowRotation)
+      {
+          yield return new Rotation(Width, Height, Depth, 0);
+          yield break;
+      }
+
+      var rotations = new[]
+      {
+          new Rotation(Width,  Height, Depth,  0),
+          new Rotation(Width,  Depth,  Height, 1),
+          new Rotation(Height, Width,  Depth,  2),
+          new Rotation(Height, Depth,  Width,  3),
+          new Rotation(Depth,  Width,  Height, 4),
+          new Rotation(Depth,  Height, Width,  5),
+      };
+
+      var seen = new HashSet<(double, double, double)>();
+      foreach (var r in rotations)
+          if (seen.Add((r.W, r.H, r.D)))
+              yield return r;
+  }
+
+
+21.3.2  OverlapsWith — בדיקת חפיפה בין שני ארגזים
+                        (ComputationModels.cs)
+------------------------------------------------------------------------
+
+פונקציה זו בודקת האם שני ארגזים מונחים חופפים זה לזה במרחב הקונטיינר.
+היא מיושמת על עיקרון Separating Axis: שני תיבות תלת-ממדיות אינן
+חופפות אם ורק אם קיים ציר שלאורכו הן מופרדות. הפרדה לאורך ציר אחד
+מספיקה לקביעת "אין חפיפה". הפונקציה נקראת מיליוני פעמים במהלך החיפוש,
+ולכן ביצועיה קריטיים לזמן הריצה הכולל.
+
+  public bool OverlapsWith(PlacedBox other)
+  {
+      if (X1 >= other.X2 || other.X1 >= X2) return false;
+      if (Y1 >= other.Y2 || other.Y1 >= Y2) return false;
+      if (Z1 >= other.Z2 || other.Z1 >= Z2) return false;
+      return true;
+  }
+
+
+21.3.3  ComputeBestLowerBound — חסם תחתון לאריזה אופטימלית
+                                 (LowerBoundCalculator.cs)
+------------------------------------------------------------------------
+
+פונקציה זו מחשבת את מספר הקונטיינרים המינימלי התיאורטי שאפשר להשיג,
+לפני שמתחיל כל חיפוש. הערך המחושב משמש את אלגוריתם Branch & Bound
+לקביעה מתי פתרון שנמצא הוא אופטימלי ולעצירה מוקדמת של החיפוש.
+הפונקציה מחשבת שלושה חסמים שונים ומחזירה את המקסימום שביניהם:
+
+  L0 — חסם נפח: חלוקת הנפח הכולל של כל הארגזים בנפח הקונטיינר.
+
+  public static int ComputeL0(
+      IEnumerable<BoxInstance> boxes,
+      ContainerDimensions container)
+  {
+      double totalVolume = boxes.Sum(b => b.BoxDefinition.Volume);
+      return (int)Math.Ceiling(totalVolume / container.Volume);
+  }
+
+  L1 — חסם ממדי: סופר ארגזים שרוחבם גדול ממחצית רוחב הקונטיינר
+  וגובהם גדול ממחצית גובה הקונטיינר. ארגזים כאלה אינם יכולים לחלוק
+  שורה, ולכן כל אחד מהם צורך שטח בלעדי. החישוב מתבצע לשלושה זוגות
+  ממדים ומוחזר המקסימום.
+
+  החסם הסופי:
+  public static int ComputeBestLowerBound(
+      IEnumerable<BoxInstance> boxes,
+      ContainerDimensions container)
+  {
+      return Math.Max(ComputeL0(boxes, container),
+             Math.Max(ComputeL1(boxes, container),
+                      ComputeL2(boxes, container)));
+  }
+
+
+21.3.4  FillRemaining — אלגוריתם חמדן לשיבוץ שאריות
+                         (GreedySolver.cs)
+------------------------------------------------------------------------
+
+פונקציה זו מממשת אלגוריתם חמדן (Greedy) הפועל כגיבוי לאחר Branch &
+Bound. היא מיועדת לארגזים שלא שובצו בשלב החיפוש המלא או כאשר מגבלת
+הזמן הוגעה. הפונקציה מסדרת את הארגזים לפי נפח יורד ומנסה לשבץ כל
+אחד בקונטיינר הכי מלא קיים (First-Fit Decreasing). אם אין מקום —
+נפתח קונטיינר חדש.
+
+  public static List<BoxInstance> FillRemaining(
+      List<BoxInstance>   remainingBoxes,
+      List<PackingState>  openBins,
+      ContainerDimensions container,
+      double              maxFillHeightRatio = 1.0)
+  {
+      var unplaced = new List<BoxInstance>();
+
+      var sorted = remainingBoxes
+          .OrderByDescending(b => b.BoxDefinition.Volume)
+          .ToList();
+
+      foreach (var instance in sorted)
+      {
+          bool placed = false;
+
+          foreach (var bin in openBins.OrderByDescending(b => b.UsedVolume))
+          {
+              if (TryPlaceGreedy(instance, bin, container, maxFillHeightRatio))
+              { placed = true; break; }
+          }
+
+          if (!placed)
+          {
+              var newBin = new PackingState();
+              if (TryPlaceGreedy(instance, newBin, container, maxFillHeightRatio))
+              { openBins.Add(newBin); placed = true; }
+          }
+
+          if (!placed) unplaced.Add(instance);
+      }
+
+      return unplaced;
+  }
+
+
+21.3.5  Find3DCorners — מציאת נקודות פינה לשיבוץ
+                         (CornerPointsFinder.cs)
+------------------------------------------------------------------------
+
+פונקציה זו מוצאת את כל המיקומים החוקיים שבהם ניתן להניח את הארגז
+הבא בתוך הקונטיינר. הרעיון מבוסס על תיאוריית Corner Points: כל
+פתרון אופטימלי ניתן לייצוג כך שכל ארגז יושב בנקודה שנוצרת מצלע של
+ארגז מונח קיים. במקום לסרוק כל נקודה אפשרית בחלל הרציף, הפונקציה
+סורקת רק קבוצה סופית ומצומצמת של נקודות. שיטה זו מצמצמת בצורה
+משמעותית את מרחב החיפוש ומייעלת את זמן הריצה.
+
+  public static List<Position3D> Find3DCorners(
+      IReadOnlyList<PlacedBox>  placedBoxes,
+      ContainerDimensions       container,
+      IEnumerable<BoxInstance>? remainingInstances = null)
+  {
+      if (placedBoxes.Count == 0)
+          return new List<Position3D> { new Position3D(0, 0, 0) };
+
+      // אוסף קואורדינטות Z ייחודיות מכל הארגזים המונחים
+      var zCoords = new SortedSet<double> { 0.0 };
+      foreach (var pb in placedBoxes)
+          zCoords.Add(pb.Z2);
+
+      // לכל ערך Z מחשב פינות 2D בחתך האופקי המתאים,
+      // ומסנן מוקדם לפי מידות הארגזים שנותרו לשיבוץ
+  }
+
+
+21.3.6  Solve — אלגוריתם Branch & Bound לשיבוץ מינימלי
+                  (BranchAndBoundSolver.cs)
+------------------------------------------------------------------------
+
+זוהי הפונקציה המרכזית של המערכת. היא מחפשת את מספר הקונטיינרים
+המינימלי הנדרש לאריזת כל הארגזים. האלגוריתם עובד בחמישה שלבים:
+
+שלב א' — חישוב חסם תחתון: מחשב את מספר הקונטיינרים המינימלי
+התיאורטי לפני כל חיפוש.
+
+שלב ב' — פתרון ראשוני מהיר: מריץ את HeuristicH1 לקבלת Upper Bound
+ראשוני. אם הפתרון הראשוני שווה לחסם התחתון — הוא אופטימלי ואין
+צורך בחיפוש נוסף.
+
+שלב ג' — חיפוש רקורסיבי לארגזים רגילים: מבצע חיפוש Branch & Bound
+תוך גיזום ענפים שלא יכולים לשפר את הפתרון הנוכחי.
+
+שלב ד' — שיבוץ ארגזים שבירים: מניח ארגזים שבירים מעל הפתרון
+שנמצא בשלב ג', תוך שמירה על הכלל שארגז רגיל לא יונח על ארגז שביר.
+
+שלב ה' — עיבוד סופי: מפעיל כיווץ פיזיקלי (GravitySettler) וחישוב
+סדר טעינה (LoadingSequencer).
+
+  public PackingResult Solve(IEnumerable<BoxInstance> instances)
+  {
+      var nonFragile = allBoxes.Where(b => !b.BoxDefinition.IsFragile).ToList();
+      var fragile    = allBoxes.Where(b =>  b.BoxDefinition.IsFragile).ToList();
+
+      int lowerBound = LowerBoundCalculator
+          .ComputeBestLowerBound(nonFragile, _container);
+
+      var h1    = new HeuristicH1(_container);
+      _bestBins = h1.Solve(nonFragile).binsUsed;
+
+      if (_bestBins > lowerBound)
+          BranchMain(sortedNonFragile, assignment, openBins,
+                     lowerBound, fragilePhase: false);
+
+      if (fragile.Count > 0)
+          BranchMain(sortedFragile, assignment, bestPhase1Bins,
+                     lbFragile, fragilePhase: true);
+
+      GravitySettler.Settle(allPlacements, _container);
+      LoadingSequencer.Sequence(allPlacements, loadingFace);
+  }
+
+תנאי גיזום — הרקורסיה נעצרת כאשר מתקיים אחד מהתנאים:
+
+  if (_globalNodeCount > MaxGlobalNodes)              return; // הגיע ל-10,000,000 צמתים
+  if (_stopwatch.Elapsed.TotalSeconds > TimeLimitSeconds) return; // חרג מפסק הזמן
+  if (currentBins >= _bestBins)                       return; // לא ניתן לשפר
+  if (currentBins == lowerBound)                      return; // אופטימלי
+
+
+21.3.7  Settle — כיווץ פיזיקלי של הארגזים (GravitySettler.cs)
+------------------------------------------------------------------------
+
+לאחר סיום שלב השיבוץ, פונקציה זו "מושכת" את כל הארגזים לכיוון
+פינות הקונטיינר כדי למלא פערים ריקים שנוצרו במהלך החיפוש. הפעולה
+מחקה כוח משיכה: תחילה מצמצמת לכיוון X (שמאלה), לאחר מכן לכיוון Z
+(קדימה), ולבסוף לכיוון Y (כלפי מטה). התהליך חוזר עד 10 פעמים או
+עד שלא חל שינוי.
+
+  public static List<PlacedBox> Settle(
+      List<PlacedBox> boxes, ContainerDimensions? container = null)
+  {
+      const int MaxIterations = 10;
+
+      for (int iter = 0; iter < MaxIterations; iter++)
+      {
+          var prevPos = current.ToDictionary(
+              b => b.Instance, b => (b.X1, b.Y1, b.Z1));
+
+          current = CompactX(current, container);
+          current = CompactZ(current, container);
+          current = CompactY(current, container);
+
+          bool changed = current.Any(b =>
+              prevPos.TryGetValue(b.Instance, out var p) && (
+                  Math.Abs(b.X1 - p.X1) > Epsilon ||
+                  Math.Abs(b.Y1 - p.Y1) > Epsilon ||
+                  Math.Abs(b.Z1 - p.Z1) > Epsilon));
+
+          if (!changed) break;
+      }
+
+      return current;
+  }
+
+
+21.3.8  Sequence — חישוב סדר הטעינה (LoadingSequencer.cs)
+------------------------------------------------------------------------
+
+פונקציה זו מחשבת את הסדר שבו יש לטעון את הארגזים לתוך הקונטיינר,
+כך שמה שנפרק ראשון יוטען אחרון (עיקרון LIFO). הפונקציה בונה גרף
+תלות (DAG) ומבצע עליו מיון טופולוגי לפי אלגוריתם Kahn.
+
+בניית גרף התלות: קשת A → B נוצרת כאשר A מונח מתחת ל-B ומחייב
+טעינה לפניו, או כאשר A חוסם את B מכיוון הדלת.
+
+  for (int a = 0; a < n; a++)
+  for (int b = 0; b < n; b++)
+  {
+      bool addEdge = IsBelow(boxes[a], boxes[b])
+                  || (IsBlocking(boxes[a], boxes[b], face)
+                      && !IsBelow(boxes[b], boxes[a]));
+
+      if (addEdge) { adjList[a].Add(b); inDegree[b]++; }
+  }
+
+מיון טופולוגי — Kahn's Algorithm:
+
+  var queue = new SortedSet<int>(
+      idx.Where(i => inDegree[i] == 0), customComparer);
+
+  while (queue.Count > 0)
+  {
+      int cur = queue.Min;
+      queue.Remove(cur);
+      result.Add((boxes[cur], step++));
+
+      foreach (int next in adjList[cur])
+      {
+          inDegree[next]--;
+          if (inDegree[next] == 0) queue.Add(next);
+      }
+  }
+
+
+21.3.9  Login — אימות מנהל ויצירת JWT Token (AuthController.cs)
+------------------------------------------------------------------------
+
+פונקציה זו מאמתת את פרטי הכניסה של המנהל ומחזירה JWT Token בתוקף
+של שעתיים. לאבטחה מוגברת, הפונקציה כוללת מנגנון Rate Limiting: לאחר
+מספר ניסיונות כושלים מאותה כתובת IP, הכניסה נחסמת זמנית. הסיסמה
+אינה נשמרת בטקסט פשוט — אימות מתבצע מול Hash מאוחסן.
+
+  [HttpPost("login")]
+  public async Task<IActionResult> Login([FromBody] LoginRequest req)
+  {
+      if (_rateLimiter.IsLockedOut(ip, out int retryAfter))
+      {
+          Response.Headers["Retry-After"] = retryAfter.ToString();
+          return StatusCode(429, "יותר מדי ניסיונות כושלים.");
+      }
+
+      var admin = await _adminService.AuthenticateAsync(
+                      req.Username, req.Password);
+      if (admin == null)
+      {
+          _rateLimiter.RecordFailure(ip);
+          return Unauthorized("Invalid credentials");
+      }
+
+      var tokenDescriptor = new SecurityTokenDescriptor
+      {
+          Subject = new ClaimsIdentity(new[]
+          {
+              new Claim(ClaimTypes.Name, admin.Username),
+              new Claim(ClaimTypes.NameIdentifier, admin.Id.ToString())
+          }),
+          Expires            = DateTime.UtcNow.AddHours(2),
+          SigningCredentials = new SigningCredentials(
+              new SymmetricSecurityKey(key),
+              SecurityAlgorithms.HmacSha256Signature)
+      };
+
+      var token = tokenHandler.CreateToken(tokenDescriptor);
+      return Ok(new { token = tokenHandler.WriteToken(token) });
+  }

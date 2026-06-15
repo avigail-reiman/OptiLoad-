@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>זרימת BranchAndBoundSolver — OptiLoad</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #676767; font-family: Arial, sans-serif; }
+  .page {
+    width: 210mm;
+    min-height: 277mm;
+    margin: 16px auto;
+    background: #ffffff;
+    padding: 9mm 7mm;
+    box-shadow: 0 2px 14px rgba(0,0,0,0.35);
+  }
+  h1 {
+    font-size: 17pt;
+    text-align: center;
+    margin-bottom: 4mm;
+    color: #0f172a;
+    border-bottom: 2px solid #1d4ed8;
+    padding-bottom: 3mm;
+  }
+  .subtitle {
+    font-size: 11pt;
+    text-align: center;
+    color: #475569;
+    margin-bottom: 6mm;
+  }
+  .mermaid {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  .mermaid svg {
+    max-width: 100% !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+  @media print {
+    body { background: #ffffff; }
+    .page { width: 100%; margin: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <h1>זרימת BranchAndBoundSolver</h1>
+
+    <div class="mermaid">
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "background": "#ffffff",
+    "fontFamily": "Arial",
+    "fontSize": "15px",
+    "primaryColor": "#dbeafe",
+    "primaryTextColor": "#0f172a",
+    "primaryBorderColor": "#1d4ed8",
+    "secondaryColor": "#e2e8f0",
+    "tertiaryColor": "#dcfce7",
+    "lineColor": "#334155",
+    "edgeLabelBackground": "#ffffff"
+  },
+  "flowchart": { "nodeSpacing": 30, "rankSpacing": 44, "padding": 16, "useMaxWidth": true, "curve": "linear" }
+}}%%
+flowchart TB
+
+    CTOR["BranchAndBoundSolver(container)\nבנאי — שומר מידות מכולה\nומאתחל שדות גלובליים"]
+
+    CTOR --> SOLVE
+
+    SOLVE["Solve(instances)\nנקודת הכניסה הראשית —\nמחלק לשבירים/לא-שבירים,\nמריץ הכל ומחזיר תוצאה"]
+
+    SOLVE --> LB["LowerBoundCalculator\n.ComputeBestLowerBound()\nמחשב חסם תחתון L0/L1/L2\nלקביעת יעד מינימלי"]
+
+    SOLVE --> H1["HeuristicH1.Solve()\nריצה חמדנית ראשונית —\nנותן upper bound\nלפני B&B"]
+
+    SOLVE --> GREEDY["GreedySolver.FillRemaining()\nממלא ארגזים שנשארו פתוחים\nאחרי H1 או אחרי פקיעת זמן"]
+
+    SOLVE --> BRANCH["BranchMain(...)\nליבת B&B — רקורסיה\nמסדרת ארגז אחד בכל קריאה,\nמגזמת ענפים שלא ישפרו"]
+
+    BRANCH --> BRANCH
+    BRANCH --> TRY["TryAssignToBin_Exhaustive()\nמנסה להכניס ארגז למכולה קיימת:\nמחשב פינות חוקיות ובודק\nכל סיבוב אפשרי"]
+
+    TRY --> CPF["CornerPointsFinder\n.Find3DCorners()\nמחזיר רשימת נקודות פינה\nחוקיות לשיבוץ הארגז הבא"]
+
+    TRY --> FILLER["SingleBinFiller\n.TryPlaceBox()\nבודק האם הארגז מתאים\nבנקודה+סיבוב נתונים"]
+
+    BRANCH --> UNDO["UndoAssignToBin()\nביטול שיבוץ — מוחק\nארגז אחרון מהמכולה\nלצורך backtracking"]
+
+    BRANCH --> GREEDY
+
+    SOLVE --> REBUILD["RebuildBinsFromPlacements()\nבונה רשימת PackingState\nממצב שמור של מיקומים\nלצורך שלב פוסט-עיבוד"]
+
+    SOLVE --> EXTRACT["ExtractPlacements()\nממיר רשימת PackingState\nבחזרה לרשימת tuple\n(instance, bin, pos, rot)"]
+
+    SOLVE --> BUILD["BuildResult()\nבונה PackingResult סופי:\nמפעיל GravitySettler,\nמחשב ניצולת, מייצר StatusMessage"]
+
+    BUILD --> GRAVITY["GravitySettler.Settle()\nמוריד ארגזים כלפי מטה\nלפי כבידה לצפיפות טובה יותר"]
+
+    classDef root fill:#bfdbfe,stroke:#1d4ed8,stroke-width:2.4px,color:#0f172a,font-size:15px;
+    classDef main fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#0f172a,font-size:14px;
+    classDef sub fill:#e2e8f0,stroke:#475569,stroke-width:1.8px,color:#1e293b,font-size:14px;
+    classDef ext fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d,font-size:14px;
+    classDef helper fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px,color:#334155,font-size:13px;
+
+    class CTOR root;
+    class SOLVE main;
+    class BRANCH,BUILD sub;
+    class TRY,UNDO,REBUILD,EXTRACT helper;
+    class LB,H1,GREEDY,CPF,FILLER,GRAVITY ext;
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, securityLevel: "loose" });
+  </script>
+</body>
+</html>

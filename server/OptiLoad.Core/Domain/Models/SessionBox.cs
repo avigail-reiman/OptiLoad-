@@ -2,22 +2,21 @@ using System;
 
 namespace OptiLoad.Core.Models
 {
-    public class SessionBox
+    public class SessionBox//מייצג קופסה שנוספה לעבודה מסוימת
     {
-        public int      SessionBoxId { get; set; }
-        public int      SessionId    { get; set; }
-        public int      BoxId        { get; set; }
-        public int      Quantity     { get; set; }
-        public string   AddedBy      { get; set; } = string.Empty;
-        public DateTime AddedAt      { get; set; }
+        public int      SessionBoxId { get; set; }//מזהה ייחודי של הקופסה בתוך הסשן
+        public int      SessionId    { get; set; }//מזהה הסשן שאליו שייכת הקופסה
+        public int      BoxId        { get; set; }//מזהה הקופסה
+        public int      Quantity     { get; set; }//כמות הקופסאות מסוג זה שיש לשבץ
+        public string   AddedBy      { get; set; } = string.Empty;//שם המשתמש שהוסיף את הקופסה לסשן
+        public DateTime AddedAt      { get; set; }//תאריך שבו נוספה הקופסה לסשן
 
-        // Joined from Box
-        public string?  BoxName      { get; set; }
-        public double   Width        { get; set; }
-        public double   Height       { get; set; }
-        public double   Depth        { get; set; }
-        public double   WeightKg     { get; set; }
-        public bool     IsFragile    { get; set; }
-        public bool     AllowRotation { get; set; } = true;
+        public string?  BoxName      { get; set; }//שם הקופסה
+        public double   Width        { get; set; }//רוחב הקופסה במטרים
+        public double   Height       { get; set; }//גובה הקופסה במטרים
+        public double   Depth        { get; set; }//עומק הקופסה במטרים
+        public double   WeightKg     { get; set; }//משקל הקופסה בקילוגרמים
+        public bool     IsFragile    { get; set; }//האם הקופסה שבירה
+        public bool     AllowRotation { get; set; } = true;//האם מותר לסובב את הקופסה
     }
 }

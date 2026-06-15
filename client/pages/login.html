@@ -194,7 +194,38 @@ body{
 </div>
 
 <script>
-const API = 'http://localhost:5098';
+const API = window.location.origin;
+let _countdownTimer = null;
+let _lockedOut      = false;
+
+function startCountdown(seconds) {
+  if (_countdownTimer) clearInterval(_countdownTimer);
+  const errEl = document.getElementById('error-msg');
+  const btn   = document.getElementById('login-btn');
+  btn.disabled = true;
+  let rem = seconds;
+
+  const tick = () => {
+    if (rem <= 0) {
+      clearInterval(_countdownTimer);
+      _countdownTimer = null;
+      _lockedOut = false;
+      btn.disabled = false;
+      errEl.textContent = 'הכניסה שוחררה — ניתן לנסות שוב.';
+      return;
+    }
+    const m = Math.floor(rem / 60);
+    const s = rem % 60;
+    const timeStr = m > 0
+      ? `${m}:${String(s).padStart(2, '0')} דקות`
+      : `${s} שניות`;
+    errEl.textContent = `הכניסה נחסמה לאחר ניסיונות כושלים חוזרים. נסה שוב בעוד ${timeStr}.`;
+    errEl.classList.add('show');
+    rem--;
+  };
+  tick();
+  _countdownTimer = setInterval(tick, 1000);
+}
 
 document.getElementById('toggle-pw').addEventListener('click', () => {
   const inp = document.getElementById('password');
@@ -203,6 +234,7 @@ document.getElementById('toggle-pw').addEventListener('click', () => {
 
 document.getElementById('login-form').addEventListener('submit', async e => {
   e.preventDefault();
+  if (_lockedOut) return;
 
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value;
@@ -236,6 +268,10 @@ document.getElementById('login-form').addEventListener('submit', async e => {
       errEl.classList.add('show');
       document.getElementById('password').value = '';
       document.getElementById('password').focus();
+    } else if (res.status === 429) {
+      _lockedOut = true;
+      const retryAfter = parseInt(res.headers.get('Retry-After')) || 300;
+      startCountdown(retryAfter);
     } else {
       errEl.textContent = 'שגיאת שרת — נסה שוב מאוחר יותר';
       errEl.classList.add('show');
@@ -244,7 +280,7 @@ document.getElementById('login-form').addEventListener('submit', async e => {
     errEl.textContent = 'לא ניתן להתחבר לשרת';
     errEl.classList.add('show');
   } finally {
-    btn.disabled = false;
+    if (!_lockedOut) btn.disabled = false;
     spinner.classList.remove('show');
   }
 });

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>תרשים מחלקות – שכבת Domain</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', Arial, sans-serif; padding: 24px; }
+  h1 { color: #58a6ff; text-align: center; margin-bottom: 8px; }
+  h2 { color: #8b949e; text-align: center; font-size: 14px; margin-bottom: 32px; font-weight: normal; }
+  .layer-note { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 16px 24px; margin-bottom: 32px; font-size: 13px; color: #8b949e; }
+  .layer-note span { color: #e6edf3; font-weight: 600; }
+  .diagram-wrap { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 24px; margin-bottom: 32px; }
+  .diagram-title { color: #79c0ff; font-size: 15px; font-weight: 700; margin-bottom: 16px; border-bottom: 1px solid #21262d; padding-bottom: 8px; }
+</style>
+</head>
+<body>
+<h1>תרשים מחלקות — שכבת Domain</h1>
+<h2>OptiLoad.Core / Domain</h2>
+
+<div class="layer-note">
+  <span>שכבת Domain</span> — מודלים טהורים ממסד הנתונים וממחשוב. אינה תלויה באף שכבה אחרת.<br>
+  כוללת: <span>Models</span> (מודלי נתונים) ו-<span>Interfaces</span> (חוזי גישה לנתונים).
+</div>
+
+<div class="diagram-wrap">
+  <div class="diagram-title">📦 מודלי ישויות ראשיות</div>
+  <div class="mermaid">
+classDiagram
+  direction TB
+
+  class Admin {
+    +int Id
+    +string Username
+    +string PasswordHash
+    +string PasswordSalt
+  }
+
+  class Box {
+    +int BoxId
+    +string BoxName
+    +double Width
+    +double Height
+    +double Depth
+    +double WeightKg
+    +bool IsFragile
+    +bool AllowRotation
+    +DateTime CreatedAt
+    +double Volume
+    +GetAllowedRotations() IEnumerable~Rotation~
+  }
+
+  class PackingJob {
+    +int JobId
+    +int AdminId
+    +int ContainerId
+    +JobStatus Status
+    +int? BinsUsed
+    +double? VolumeUtilization
+    +double? TotalWeightKg
+    +double? SolveTimeSeconds
+    +bool? IsOptimal
+    +string? StatusMessage
+    +DateTime CreatedAt
+    +DateTime? CompletedAt
+  }
+
+  class PackingJobBox {
+    +int JobBoxId
+    +int JobId
+    +int BoxId
+    +int Quantity
+  }
+
+  class ContainerTemplate {
+    +int TemplateId
+    +string TemplateName
+    +double Width
+    +double Height
+    +double Depth
+    +double MaxWeightKg
+    +DateTime CreatedAt
+    +double Volume
+  }
+
+  class Container {
+    +int ContainerId
+    +int TemplateId
+    +string ContainerCode
+    +ContainerStatus Status
+    +DateTime CreatedAt
+  }
+
+  class ContainerSnapshot {
+    +int Id
+    +int JobId
+    +int LoadingStep
+    +string BoxName
+    +string ImageData
+    +DateTime CreatedAt
+  }
+
+  class ErrorLog {
+    +int ErrorId
+    +int? JobId
+    +string Context
+    +string Message
+    +string? StackTrace
+    +DateTime CreatedAt
+  }
+
+  PackingJob --> Container : מכיל
+  PackingJob --> Admin : שייך ל
+  PackingJobBox --> PackingJob : שייך ל
+  PackingJobBox --> Box : מכיל
+  Container --> ContainerTemplate : מבוסס על
+  ContainerSnapshot --> PackingJob : שייך ל
+  ErrorLog --> PackingJob : מתייחס ל
+  </div>
+</div>
+
+<div class="diagram-wrap">
+  <div class="diagram-title">🗂 מודלי סשן (Session)</div>
+  <div class="mermaid">
+classDiagram
+  direction TB
+
+  class PackingSession {
+    +int SessionId
+    +int AdminId
+    +string Name
+    +string? Description
+    +string Status
+    +string LinkToken
+    +DateTime CreatedAt
+  }
+
+  class SessionUser {
+    +int SessionUserId
+    +int SessionId
+    +string DisplayName
+    +string? Email
+    +string UserToken
+    +string? RootToken
+    +DateTime JoinedAt
+  }
+
+  class AccessRequest {
+    +int RequestId
+    +int SessionId
+    +int SessionUserId
+    +string Status
+    +DateTime RequestedAt
+    +DateTime? RespondedAt
+    +string? DisplayName
+    +string? Email
+  }
+
+  class SessionBox {
+    +int SessionBoxId
+    +int SessionId
+    +int BoxId
+    +int Quantity
+    +string AddedBy
+    +DateTime AddedAt
+    +string? BoxName
+    +double? Width
+    +double? Height
+    +double? Depth
+    +double? WeightKg
+    +bool? IsFragile
+    +bool? AllowRotation
+  }
+
+  class BoxAuditLog {
+    +int LogId
+    +int SessionId
+    +string Action
+    +int? BoxId
+    +string BoxName
+    +int? Quantity
+    +string ChangedBy
+    +string ChangedByType
+    +DateTime ChangedAt
+  }
+
+  PackingSession --> Admin : מנוהל ע"י
+  SessionUser --> PackingSession : משתתף ב
+  AccessRequest --> PackingSession : מבוקשת לגבי
+  AccessRequest --> SessionUser : מוגשת ע"י
+  SessionBox --> PackingSession : שייך ל
+  BoxAuditLog --> PackingSession : מתעד שינויים
+  </div>
+</div>
+
+<div class="diagram-wrap">
+  <div class="diagram-title">⚙️ מודלי חישוב (Computation)</div>
+  <div class="mermaid">
+classDiagram
+  direction TB
+
+  class ContainerDimensions {
+    +double Width
+    +double Height
+    +double Depth
+    +double MaxWeightKg
+    +double Volume
+  }
+
+  class BoxInstance {
+    +Box BoxDefinition
+    +int InstanceIndex
+    +string InstanceId
+  }
+
+  class Rotation {
+    +double W
+    +double H
+    +double D
+    +int Index
+    +double Volume
+  }
+
+  class Position3D {
+    +double X
+    +double Y
+    +double Z
+  }
+
+  class PlacedBox {
+    +BoxInstance Instance
+    +Position3D Position
+    +Rotation Rotation
+    +int BinIndex
+    +double X1,Y1,Z1
+    +double X2,Y2,Z2
+    +double Volume
+    +OverlapsWith(PlacedBox) bool
+  }
+
+  class PackingState {
+    +IReadOnlyList~PlacedBox~ PlacedBoxes
+    +double UsedWeightKg
+    +double UsedVolume
+    +int Count
+    +AddBox(PlacedBox)
+    +RemoveLastBox()
+    +Clone() PackingState
+  }
+
+  class PackingResult {
+    +List~PlacedBox~ PlacedBoxes
+    +List~BoxInstance~ UnplacedBoxes
+    +int BinsUsed
+    +double VolumeUtilization
+    +TimeSpan SolveTime
+    +string StatusMessage
+    +bool IsOptimal
+    +List~BinStats~ PerBinStats
+  }
+
+  class BinStats {
+    +int BinIndex
+    +double UsedVolume
+    +double TotalVolume
+    +double UtilizationPercent
+    +double WastedPercent
+  }
+
+  BoxInstance --> Box : מתבסס על
+  PlacedBox --> BoxInstance : מייצג
+  PlacedBox --> Position3D : ממוקם ב
+  PlacedBox --> Rotation : מסובב ב
+  PackingState --> PlacedBox : מכיל
+  PackingResult --> PlacedBox : תוצאות
+  PackingResult --> BoxInstance : לא שובצו
+  PackingResult --> BinStats : סטטיסטיקות
+  </div>
+</div>
+
+<div class="diagram-wrap">
+  <div class="diagram-title">🔌 ממשקים (Interfaces)</div>
+  <div class="mermaid">
+classDiagram
+  direction LR
+
+  class IAdminRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetAdminByUsername(string) Admin?
+    +AdminsExist() bool
+    +CreateAdmin(string, string, string)
+  }
+
+  class IPackingRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetContainerDimensions(int) ContainerDimensions
+    +GetJobBoxInstances(int) List~BoxInstance~
+    +SavePlacementResults(int, PackingResult)
+    +CompleteJob(int, PackingResult)
+    +LogError(int, string, Exception)
+  }
+
+  class ISnapshotRepository {
+    &lt;&lt;interface&gt;&gt;
+    +SaveSnapshotsAsync(int, IEnumerable~ContainerSnapshot~)
+    +GetSnapshotsAsync(int) List~ContainerSnapshot~
+    +DeleteSnapshotsAsync(int)
+  }
+
+  class ISessionRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetSessionsByAdminAsync(int) List~PackingSession~
+    +GetSessionByIdAsync(int) PackingSession?
+    +CreateSessionAsync(int,string,string,string) int
+    +UpdateSessionStatusAsync(int, string)
+    +DeleteSessionAsync(int)
+    +GetSessionBoxesAsync(int) List~SessionBox~
+    +AddSessionBoxAsync(int,int,int,string) int
+    +DeleteSessionBoxAsync(int,int) bool
+    +GetAuditLogAsync(int) List~BoxAuditLog~
+    +AddAuditLogAsync(BoxAuditLog)
+    +GetRequestsBySessionAsync(int) List~AccessRequest~
+    +UpdateRequestStatusAsync(int, string)
+  }
+
+  class IAdminService {
+    &lt;&lt;interface&gt;&gt;
+    +AuthenticateAsync(string, string) Admin?
+    +SeedDefaultAdminIfEmptyAsync()
+  }
+
+  IAdminRepository ..> Admin : מחזיר
+  IPackingRepository ..> PackingResult : מחזיר
+  ISessionRepository ..> PackingSession : מחזיר
+  ISessionRepository ..> BoxAuditLog : מחזיר
+  IAdminService ..> IAdminRepository : תלוי ב
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({ theme: 'dark', startOnLoad: true, themeVariables: {
+    primaryColor: '#1f2937', primaryTextColor: '#e6edf3',
+    primaryBorderColor: '#58a6ff', lineColor: '#58a6ff',
+    secondaryColor: '#161b22', tertiaryColor: '#0d1117'
+  }});
+</script>
+</body>
+</html>

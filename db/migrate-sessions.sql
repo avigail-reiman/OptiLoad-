@@ -89,3 +89,14 @@ BEGIN
     PRINT 'BoxAuditLog table created.';
 END
 ELSE PRINT 'BoxAuditLog table already exists.';
+
+-- 6. Add RootToken column to SessionUser (for join-request retry chain / DDoS prevention)
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+               WHERE TABLE_NAME = 'SessionUser' AND COLUMN_NAME = 'RootToken')
+BEGIN
+    ALTER TABLE SessionUser ADD RootToken CHAR(36) NOT NULL DEFAULT '';
+    -- Backfill via dynamic SQL so the column name is resolved at runtime (not parse time)
+    EXEC sp_executesql N'UPDATE SessionUser SET RootToken = Token WHERE RootToken = ''''';
+    PRINT 'SessionUser.RootToken column added and backfilled.';
+END
+ELSE PRINT 'SessionUser.RootToken column already exists.';

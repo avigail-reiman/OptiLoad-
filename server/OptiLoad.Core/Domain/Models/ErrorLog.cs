@@ -3,13 +3,13 @@
 namespace OptiLoad.Core.Models
 {
 
-    public class ErrorLog
+    public class ErrorLog//מודל שמייצג רשומת שגיאה שנרשמה במהלך הריצה של התהליך, כולל מזהה ייחודי, מזהה העבודה (אם רלוונטי), הקשר שבו התרחשה השגיאה, הודעת השגיאה, עקבות השגיאה ותאריך יצירת הרשומה
     {
-        public int      ErrorId    { get; set; }
-        public int?     JobId      { get; set; }
-        public string   Context    { get; set; } = string.Empty;
-        public string   Message    { get; set; } = string.Empty;
-        public string?  StackTrace { get; set; }
-        public DateTime CreatedAt  { get; set; }
+        public int      ErrorId    { get; set; }//מזהה ייחודי של רשומת השגיאה במסד הנתונים, משמש לזיהוי הרשומה ולקשר אותה לטבלאות אחרות במסד הנתונים
+        public int?     JobId      { get; set; }//מזהה של העבודה שאליה שייכת רשומת השגיאה, אם רלוונטי, משמש לקשר בין רשומת השגיאה לעבודה במסד הנתונים
+        public string   Context    { get; set; } = string.Empty;//הקשר שבו התרחשה השגיאה, יכול להיות שם הפונקציה, שם המחלקה או תיאור קצר של הפעולה שהתרחשה בעת השגיאה, משמש לתיעוד ולממשק המשתמש כדי להבין את מקור השגיאה
+        public string   Message    { get; set; } = string.Empty;//הודעת השגיאה שמספקת מידע על מה השתבש, משמשת לתיעוד ולממשק המשתמש כדי להבין את הבעיה שקרתה
+        public string?  StackTrace { get; set; }//עקבות השגיאה שמספקות מידע על מיקום השגיאה בקוד, יכול להיות null אם לא נרשמו עקבות, משמשות לתיעוד ולממשק המשתמש כדי לעזור למפתחים לאתר את מקור השגיאה
+        public DateTime CreatedAt  { get; set; }//תאריך יצירת רשומת השגיאה, משמש לתיעוד ולממשק המשתמש כדי לדעת מתי התרחשה השגיאה או מתי נרשמה הרשומה
     }
 }

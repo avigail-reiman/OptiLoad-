@@ -67,7 +67,7 @@ public class BoxTests
 
         foreach (var rot in box.GetAllowedRotations())
         {
-            Assert.Equal(expectedVolume, rot.Volume, precision: 9);
+            Assert.Equal(expectedVolume, rot.W * rot.H * rot.D, precision: 9);
         }
     }
 }

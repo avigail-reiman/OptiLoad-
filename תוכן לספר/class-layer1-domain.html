@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Class Diagram — Domain Layer</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#666;font-family:Arial,sans-serif}
+  .page{width:277mm;background:#fff;margin:22px auto;padding:10mm 11mm;box-shadow:0 2px 18px rgba(0,0,0,.45)}
+  h2{font-size:15pt;color:#0f172a;text-align:center;border-bottom:2px solid #1d4ed8;padding-bottom:3mm;margin-bottom:2mm}
+  .subtitle{font-size:10pt;color:#475569;text-align:center;margin-bottom:4mm}
+  .sec{font-size:10pt;color:#1d4ed8;font-weight:bold;margin:5mm 0 2mm;border-right:3px solid #1d4ed8;padding-right:2mm;text-align:right}
+  .mermaid{width:100%;display:flex;justify-content:center;background:#fff}
+  .mermaid svg{max-width:100%!important;height:auto!important;background:#fff!important}
+  @media print{body{background:#fff}.page{margin:0;box-shadow:none;width:100%}}
+</style>
+</head>
+<body>
+<div class="page">
+  <h2>Domain Layer — מודלים וממשקים</h2>
+  <p class="subtitle">OptiLoad.Core / Domain</p>
+
+  <p class="sec">מודלי ישויות (Entities)</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dbeafe","primaryTextColor":"#0f172a","primaryBorderColor":"#1d4ed8","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+  class Admin {
+    int Id-
+    string Username-
+    string PasswordHash-
+    string PasswordSalt-
+  }
+  class Box {
+    int BoxId-
+    string BoxName-
+    double Width / Height / Depth-
+    double WeightKg-
+    bool IsFragile-
+    bool AllowRotation-
+    GetAllowedRotations() IEnumerable+
+    double Volume+
+  }
+  class ContainerTemplate {
+    int TemplateId-
+    string TemplateName-
+    double Width / Height / Depth-
+    double MaxWeightKg-
+    double Volume+
+  }
+  class PackingJob {
+    int JobId-
+    int AdminId-
+    JobStatus Status-
+    int BinsUsed-
+    double VolumeUtilization-
+    bool IsOptimal-
+    DateTime CreatedAt-
+  }
+  class PackingJobBox {
+    int JobId-
+    int BoxId-
+    int Quantity-
+  }
+  class ContainerSnapshot {
+    int JobId-
+    int LoadingStep-
+    string BoxName-
+    string ImageData-
+  }
+  Admin "1" --> "*" PackingJob : creates
+  PackingJob "1" --> "*" PackingJobBox : contains
+  Box "1" --> "*" PackingJobBox : referenced by
+  PackingJob --> ContainerSnapshot : has
+  PackingJob --> ContainerTemplate : uses
+  </div>
+
+  <p class="sec">מודלי סשן (Session)</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dbeafe","primaryTextColor":"#0f172a","primaryBorderColor":"#1d4ed8","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+  class PackingSession {
+    int SessionId-
+    int AdminId-
+    string Name-
+    string Status-
+    string LinkToken-
+  }
+  class SessionUser {
+    int SessionUserId-
+    string DisplayName-
+    string UserToken-
+    string RootToken-
+  }
+  class AccessRequest {
+    int RequestId-
+    string Status-
+    string DisplayName-
+    DateTime RequestedAt-
+  }
+  class SessionBox {
+    int SessionBoxId-
+    string BoxName-
+    int Quantity-
+    string AddedBy-
+  }
+  class BoxAuditLog {
+    string Action-
+    string BoxName-
+    int Quantity-
+    string ChangedBy-
+    string ChangedByType-
+    DateTime ChangedAt-
+  }
+  PackingSession "1" --> "*" SessionUser : joined by
+  SessionUser "1" --> "*" AccessRequest : submits
+  PackingSession "1" --> "*" SessionBox : contains
+  PackingSession "1" --> "*" BoxAuditLog : logged by
+  </div>
+
+  <p class="sec">מודלי חישוב (Computation)</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dbeafe","primaryTextColor":"#0f172a","primaryBorderColor":"#1d4ed8","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+  class ContainerDimensions {
+    double Width / Height / Depth-
+    double MaxWeightKg-
+    double Volume+
+  }
+  class BoxInstance {
+    Box BoxDefinition-
+    int InstanceIndex-
+    string InstanceId+
+  }
+  class PlacedBox {
+    BoxInstance Instance-
+    Position3D Position-
+    Rotation Rotation-
+    int BinIndex-
+    OverlapsWith(PlacedBox other) bool+
+  }
+  class PackingState {
+    IReadOnlyList PlacedBoxes+
+    double UsedWeightKg+
+    AddBox(PlacedBox)+
+    RemoveLastBox()+
+    Clone() PackingState+
+  }
+  class PackingResult {
+    List PlacedBoxes+
+    List UnplacedBoxes+
+    int BinsUsed+
+    double VolumeUtilization+
+    bool IsOptimal+
+    List PerBinStats+
+  }
+  BoxInstance --> Box : based on
+  PlacedBox --> BoxInstance : represents
+  PackingState --> PlacedBox : contains
+  PackingResult --> PlacedBox : results
+  </div>
+
+  <p class="sec">ממשקי גישה לנתונים (Interfaces)</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dcfce7","primaryTextColor":"#0f172a","primaryBorderColor":"#16a34a","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+  class IAdminRepository {
+    &lt;&lt;interface&gt;&gt;
+    GetAdminByUsername(string username) Admin+
+    AdminsExist() bool+
+    CreateAdmin(string,string,string)+
+  }
+  class IPackingRepository {
+    &lt;&lt;interface&gt;&gt;
+    GetContainerDimensions(int jobId) ContainerDimensions+
+    GetJobBoxInstances(int jobId) List+
+    SavePlacementResults(int, PackingResult)+
+    CompleteJob(int, PackingResult)+
+    LogError(int, string, Exception)+
+  }
+  class ISessionRepository {
+    &lt;&lt;interface&gt;&gt;
+    GetSessionsByAdminAsync(int adminId) List+
+    CreateSessionAsync(int,string,string,string) int+
+    GetSessionBoxesAsync(int sessionId) List+
+    AddSessionBoxAsync(int,int,int,string) int+
+    DeleteSessionBoxAsync(int,int) bool+
+    UpdateSessionBoxQuantityAsync(int,int,int) bool+
+    GetAuditLogAsync(int sessionId) List+
+    AddAuditLogAsync(BoxAuditLog)+
+  }
+  class ISnapshotRepository {
+    &lt;&lt;interface&gt;&gt;
+    SaveSnapshotsAsync(int, IEnumerable)+
+    GetSnapshotsAsync(int jobId) List+
+    DeleteSnapshotsAsync(int jobId)+
+  }
+  </div>
+</div>
+<script>mermaid.initialize({startOnLoad:true})</script>
+</body>
+</html>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#666;font-family:Arial,sans-serif}
+  .page{width:277mm;background:#fff;margin:22px auto;padding:10mm 11mm;box-shadow:0 2px 18px rgba(0,0,0,.45)}
+  h2{font-size:15pt;color:#0f172a;text-align:center;border-bottom:2px solid #1d4ed8;padding-bottom:3mm;margin-bottom:2mm}
+  .subtitle{font-size:10pt;color:#475569;text-align:center;margin-bottom:5mm}
+  .sec{font-size:10pt;color:#1d4ed8;font-weight:bold;margin:5mm 0 2mm;border-right:3px solid #1d4ed8;padding-right:2mm}
+  .mermaid{width:100%;display:flex;justify-content:center;background:#fff}
+  .mermaid svg{max-width:100%!important;height:auto!important;background:#fff!important}
+  @media print{body{background:#fff}.page{margin:0;box-shadow:none;width:100%}}
+</style>
+</head>
+<body>
+<div class="page">
+  <h2>Domain Layer — מודלים וממשקים</h2>
+  <p class="subtitle">OptiLoad.Core / Domain</p>
+
+  <p class="sec">מודלי ישויות</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dbeafe","primaryTextColor":"#0f172a","primaryBorderColor":"#1d4ed8","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+  class Admin {
+    +int Id
+    +string Username
+    +string PasswordHash
+    +string PasswordSalt
+  }
+  class Box {
+    +int BoxId
+    +string BoxName
+    +double Width / Height / Depth
+    +double WeightKg
+    +bool IsFragile
+    +bool AllowRotation
+    +GetAllowedRotations() IEnumerable
+  }
+  class ContainerTemplate {
+    +int TemplateId
+    +string TemplateName
+    +double Width / Height / Depth
+    +double MaxWeightKg
+  }
+  class PackingJob {
+    +int JobId
+    +int AdminId
+    +JobStatus Status
+    +int BinsUsed
+    +double VolumeUtilization
+    +bool IsOptimal
+  }
+  class PackingJobBox {
+    +int JobId
+    +int BoxId
+    +int Quantity
+  }
+  class ContainerSnapshot {
+    +int JobId
+    +int LoadingStep
+    +string ImageData
+  }
+  Admin "1" --> "*" PackingJob : creates
+  PackingJob "1" --> "*" PackingJobBox : contains
+  Box "1" --> "*" PackingJobBox : referenced by
+  PackingJob --> ContainerSnapshot : has
+  </div>
+
+  <p class="sec">מודלי סשן</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dbeafe","primaryTextColor":"#0f172a","primaryBorderColor":"#1d4ed8","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+  class PackingSession {
+    +int SessionId
+    +int AdminId
+    +string Name
+    +string Status
+    +string LinkToken
+  }
+  class SessionUser {
+    +int SessionUserId
+    +string DisplayName
+    +string UserToken
+  }
+  class AccessRequest {
+    +int RequestId
+    +string Status
+    +string DisplayName
+  }
+  class SessionBox {
+    +int SessionBoxId
+    +string BoxName
+    +int Quantity
+    +string AddedBy
+  }
+  class BoxAuditLog {
+    +string Action
+    +string BoxName
+    +int Quantity
+    +string ChangedBy
+    +string ChangedByType
+    +DateTime ChangedAt
+  }
+  PackingSession "1" --> "*" SessionUser : joined by
+  SessionUser "1" --> "*" AccessRequest : submits
+  PackingSession "1" --> "*" SessionBox : contains
+  PackingSession "1" --> "*" BoxAuditLog : logged by
+  </div>
+
+  <p class="sec">מודלי חישוב</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dbeafe","primaryTextColor":"#0f172a","primaryBorderColor":"#1d4ed8","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+  class ContainerDimensions {
+    +double Width / Height / Depth
+    +double MaxWeightKg
+    +double Volume
+  }
+  class BoxInstance {
+    +Box BoxDefinition
+    +int InstanceIndex
+    +string InstanceId
+  }
+  class PlacedBox {
+    +BoxInstance Instance
+    +Position3D Position
+    +Rotation Rotation
+    +int BinIndex
+    +OverlapsWith(PlacedBox) bool
+  }
+  class PackingResult {
+    +List PlacedBoxes
+    +List UnplacedBoxes
+    +int BinsUsed
+    +double VolumeUtilization
+    +bool IsOptimal
+  }
+  class PackingState {
+    +IReadOnlyList PlacedBoxes
+    +double UsedWeightKg
+    +AddBox(PlacedBox)
+    +RemoveLastBox()
+    +Clone() PackingState
+  }
+  BoxInstance --> Box : based on
+  PlacedBox --> BoxInstance : represents
+  PackingState --> PlacedBox : contains
+  PackingResult --> PlacedBox : results
+  </div>
+
+  <p class="sec">ממשקים (Interfaces)</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dcfce7","primaryTextColor":"#0f172a","primaryBorderColor":"#16a34a","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+  class IAdminRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetAdminByUsername(string) Admin
+    +AdminsExist() bool
+    +CreateAdmin(string,string,string)
+  }
+  class IPackingRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetContainerDimensions(int)
+    +GetJobBoxInstances(int) List
+    +SavePlacementResults(int, PackingResult)
+    +CompleteJob(int, PackingResult)
+  }
+  class ISessionRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetSessionsByAdminAsync(int) List
+    +CreateSessionAsync(...) int
+    +GetSessionBoxesAsync(int) List
+    +AddSessionBoxAsync(...) int
+    +DeleteSessionBoxAsync(int,int) bool
+    +UpdateSessionBoxQuantityAsync(...) bool
+    +GetAuditLogAsync(int) List
+    +AddAuditLogAsync(BoxAuditLog)
+  }
+  class ISnapshotRepository {
+    &lt;&lt;interface&gt;&gt;
+    +SaveSnapshotsAsync(int, IEnumerable)
+    +GetSnapshotsAsync(int) List
+  }
+  </div>
+</div>
+<script>mermaid.initialize({startOnLoad:true})</script>
+</body>
+</html>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #666; font-family: Arial, sans-serif; }
+  .page {
+    width: 277mm;
+    background: #ffffff;
+    margin: 22px auto;
+    padding: 10mm 11mm;
+    box-shadow: 0 2px 18px rgba(0,0,0,0.45);
+  }
+  h2 {
+    font-size: 15pt;
+    color: #0f172a;
+    text-align: center;
+    border-bottom: 2px solid #1d4ed8;
+    padding-bottom: 3mm;
+    margin-bottom: 5mm;
+  }
+  .subtitle {
+    font-size: 10pt;
+    color: #475569;
+    text-align: center;
+    margin-bottom: 5mm;
+    margin-top: -3mm;
+  }
+  .section-title {
+    font-size: 11pt;
+    color: #1d4ed8;
+    font-weight: bold;
+    margin: 6mm 0 3mm 0;
+    border-right: 4px solid #1d4ed8;
+    padding-right: 3mm;
+  }
+  .mermaid {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    background: #ffffff;
+  }
+  .mermaid svg {
+    max-width: 100% !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; box-shadow: none; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <h2>תרשים מחלקות — שכבת Domain</h2>
+  <p class="subtitle">OptiLoad.Core / Domain — מודלים וממשקים | ללא תלות בשכבות אחרות</p>
+
+  <p class="section-title">מודלי ישויות ראשיות</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dbeafe","primaryTextColor":"#0f172a","primaryBorderColor":"#1d4ed8","lineColor":"#334155","secondaryColor":"#dcfce7","tertiaryColor":"#fef9c3","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":12,"useMaxWidth":true}}}%%
+classDiagram
+  direction TB
+
+  class Admin {
+    +int Id
+    +string Username
+    +string PasswordHash
+    +string PasswordSalt
+  }
+
+  class Box {
+    +int BoxId
+    +string BoxName
+    +double Width
+    +double Height
+    +double Depth
+    +double WeightKg
+    +bool IsFragile
+    +bool AllowRotation
+    +DateTime CreatedAt
+    +double Volume
+    +GetAllowedRotations() IEnumerable
+  }
+
+  class PackingJob {
+    +int JobId
+    +int AdminId
+    +int ContainerId
+    +JobStatus Status
+    +int BinsUsed
+    +double VolumeUtilization
+    +bool IsOptimal
+    +double SolveTimeSeconds
+    +DateTime CreatedAt
+    +DateTime CompletedAt
+  }
+
+  class PackingJobBox {
+    +int JobBoxId
+    +int JobId
+    +int BoxId
+    +int Quantity
+  }
+
+  class ContainerTemplate {
+    +int TemplateId
+    +string TemplateName
+    +double Width
+    +double Height
+    +double Depth
+    +double MaxWeightKg
+    +DateTime CreatedAt
+    +double Volume
+  }
+
+  class Container {
+    +int ContainerId
+    +int TemplateId
+    +string ContainerCode
+    +ContainerStatus Status
+    +DateTime CreatedAt
+  }
+
+  class ContainerSnapshot {
+    +int Id
+    +int JobId
+    +int LoadingStep
+    +string BoxName
+    +string ImageData
+    +DateTime CreatedAt
+  }
+
+  class ErrorLog {
+    +int ErrorId
+    +int JobId
+    +string Context
+    +string Message
+    +string StackTrace
+    +DateTime CreatedAt
+  }
+
+  Admin "1" --> "*" PackingJob : creates
+  PackingJob "1" --> "*" PackingJobBox : contains
+  Box "1" --> "*" PackingJobBox : referenced by
+  Container --> ContainerTemplate : based on
+  PackingJob --> Container : uses
+  ContainerSnapshot --> PackingJob : belongs to
+  ErrorLog --> PackingJob : logs
+  </div>
+
+  <p class="section-title">מודלי סשן (Session)</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dbeafe","primaryTextColor":"#0f172a","primaryBorderColor":"#1d4ed8","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":12,"useMaxWidth":true}}}%%
+classDiagram
+  direction TB
+
+  class PackingSession {
+    +int SessionId
+    +int AdminId
+    +string Name
+    +string Description
+    +string Status
+    +string LinkToken
+    +DateTime CreatedAt
+  }
+
+  class SessionUser {
+    +int SessionUserId
+    +int SessionId
+    +string DisplayName
+    +string Email
+    +string UserToken
+    +string RootToken
+    +DateTime JoinedAt
+  }
+
+  class AccessRequest {
+    +int RequestId
+    +int SessionId
+    +int SessionUserId
+    +string Status
+    +DateTime RequestedAt
+    +DateTime RespondedAt
+    +string DisplayName
+    +string Email
+  }
+
+  class SessionBox {
+    +int SessionBoxId
+    +int SessionId
+    +int BoxId
+    +int Quantity
+    +string AddedBy
+    +DateTime AddedAt
+    +string BoxName
+    +double Width
+    +double Height
+    +double Depth
+    +double WeightKg
+  }
+
+  class BoxAuditLog {
+    +int LogId
+    +int SessionId
+    +string Action
+    +int BoxId
+    +string BoxName
+    +int Quantity
+    +string ChangedBy
+    +string ChangedByType
+    +DateTime ChangedAt
+  }
+
+  Admin "1" --> "*" PackingSession : manages
+  PackingSession "1" --> "*" SessionUser : joined by
+  SessionUser "1" --> "*" AccessRequest : submits
+  PackingSession "1" --> "*" SessionBox : contains
+  PackingSession "1" --> "*" BoxAuditLog : logged by
+  </div>
+
+  <p class="section-title">מודלי חישוב (Computation)</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dbeafe","primaryTextColor":"#0f172a","primaryBorderColor":"#1d4ed8","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":12,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+
+  class ContainerDimensions {
+    +double Width
+    +double Height
+    +double Depth
+    +double MaxWeightKg
+    +double Volume
+  }
+
+  class BoxInstance {
+    +Box BoxDefinition
+    +int InstanceIndex
+    +string InstanceId
+  }
+
+  class Rotation {
+    +double W
+    +double H
+    +double D
+    +int Index
+    +double Volume
+  }
+
+  class Position3D {
+    +double X
+    +double Y
+    +double Z
+  }
+
+  class PlacedBox {
+    +BoxInstance Instance
+    +Position3D Position
+    +Rotation Rotation
+    +int BinIndex
+    +double X1,Y1,Z1
+    +double X2,Y2,Z2
+    +bool OverlapsWith(PlacedBox other)
+  }
+
+  class PackingState {
+    +IReadOnlyList PlacedBoxes
+    +double UsedWeightKg
+    +double UsedVolume
+    +int Count
+    +AddBox(PlacedBox)
+    +RemoveLastBox()
+    +Clone() PackingState
+  }
+
+  class PackingResult {
+    +List PlacedBoxes
+    +List UnplacedBoxes
+    +int BinsUsed
+    +double VolumeUtilization
+    +TimeSpan SolveTime
+    +bool IsOptimal
+    +List PerBinStats
+  }
+
+  class BinStats {
+    +int BinIndex
+    +double UsedVolume
+    +double TotalVolume
+    +double UtilizationPercent
+  }
+
+  BoxInstance --> Box : based on
+  PlacedBox --> BoxInstance : represents
+  PlacedBox --> Position3D : located at
+  PlacedBox --> Rotation : rotated by
+  PackingState --> PlacedBox : contains
+  PackingResult --> PlacedBox : placed
+  PackingResult --> BinStats : stats
+  </div>
+
+  <p class="section-title">ממשקי גישה לנתונים (Interfaces)</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#dcfce7","primaryTextColor":"#0f172a","primaryBorderColor":"#16a34a","lineColor":"#334155","fontFamily":"Arial","fontSize":"13px"},"classDiagram":{"diagramPadding":12,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+
+  class IAdminRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetAdminByUsername(string) Admin
+    +AdminsExist() bool
+    +CreateAdmin(string,string,string)
+  }
+
+  class IPackingRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetContainerDimensions(int) ContainerDimensions
+    +GetJobBoxInstances(int) List
+    +SavePlacementResults(int, PackingResult)
+    +CompleteJob(int, PackingResult)
+    +LogError(int, string, Exception)
+  }
+
+  class ISessionRepository {
+    &lt;&lt;interface&gt;&gt;
+    +GetSessionsByAdminAsync(int) List
+    +GetSessionByIdAsync(int) PackingSession
+    +CreateSessionAsync(int,string,string,string) int
+    +DeleteSessionAsync(int)
+    +GetSessionBoxesAsync(int) List
+    +AddSessionBoxAsync(int,int,int,string) int
+    +DeleteSessionBoxAsync(int,int) bool
+    +GetAuditLogAsync(int) List
+    +AddAuditLogAsync(BoxAuditLog)
+    +GetRequestsBySessionAsync(int) List
+    +UpdateRequestStatusAsync(int,string)
+  }
+
+  class ISnapshotRepository {
+    &lt;&lt;interface&gt;&gt;
+    +SaveSnapshotsAsync(int, IEnumerable)
+    +GetSnapshotsAsync(int) List
+    +DeleteSnapshotsAsync(int)
+  }
+
+  class IAdminService {
+    &lt;&lt;interface&gt;&gt;
+    +AuthenticateAsync(string,string) Admin
+    +SeedDefaultAdminIfEmptyAsync()
+  }
+
+  IAdminService ..> IAdminRepository : depends on
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true });
+</script>
+</body>
+</html>

@@ -1,0 +1,360 @@
+===============================================================
+  OptiLoad — הסבר מלא על כל המחלקות בתיקיית Domain/Models
+===============================================================
+תיקייה: server/OptiLoad.Core/Domain/Models/
+
+המחלקות בתיקייה מתחלקות לשלוש קטגוריות:
+  [DB]  — מחלקות שמיפוי ישיר לטבלה במסד הנתונים
+  [CALC] — מחלקות פנימיות לחישוב האלגוריתם בלבד (לא נשמרות ל-DB)
+  [JOIN] — מחלקות DB שמכילות שדות נוספים מ-JOIN
+
+---------------------------------------------------------------
+1. Admin.cs                                              [DB]
+---------------------------------------------------------------
+מה יש:
+  - Id          — מפתח ראשי
+  - Username    — שם משתמש (ייחודי)
+  - PasswordHash — הסיסמה לאחר הצפנה
+  - PasswordSalt — מלח אקראי שנוצר בהרשמה
+
+למה נוצרה:
+  מייצגת מנהל מערכת שיכול להתחבר ולנהל סשנים.
+  הסיסמה לא נשמרת בטקסט רגיל — נשמרת כ-Hash עם Salt
+  כדי להגן על אבטחת המידע.
+
+מי משתמש ובאיזו מטרה:
+  - AdminService.AuthenticateAsync()   — בדיקת התחברות
+  - AdminService.RegisterAdminAsync()  — יצירת מנהל חדש
+  - AuthController (POST /api/auth/login, POST /api/auth/register)
+  - טבלת DB: Admins
+
+---------------------------------------------------------------
+2. Box.cs                                                [DB]
+---------------------------------------------------------------
+מה יש:
+  - BoxId, BoxName    — מזהה ושם
+  - Width, Height, Depth — מידות
+  - WeightKg          — משקל
+  - IsFragile         — האם שביר (משפיע על מיקום באריזה)
+  - AllowRotation     — האם מותר לסובב
+  - CreatedAt         — תאריך יצירה
+  - Volume (computed) — נפח = W×H×D
+  - GetAllowedRotations() — מחזיר עד 6 כיווני סיבוב אפשריים
+
+למה נוצרה:
+  ההגדרה הבסיסית של קופסה. כל קופסה בספריית הארגזים היא
+  שורה בטבלת Boxes.
+
+מי משתמש ובאיזו מטרה:
+  - BoxController     — CRUD של קופסאות (GET/POST/DELETE)
+  - BranchAndBoundSolver, GreedySolver — GetAllowedRotations()
+    לקבלת כיווני הסיבוב האפשריים לפני שיבוץ
+  - PackingJobBox     — מקשר בין Job לקופסות
+  - SessionBox        — מקשר בין סשן לקופסות
+  - טבלת DB: Boxes
+
+---------------------------------------------------------------
+3. BoxAuditLog.cs                                        [DB]
+---------------------------------------------------------------
+מה יש:
+  - LogId, SessionId  — מזהים
+  - Action            — "Added" / "Deleted" / "Updated"
+  - BoxId?, BoxName   — פרטי הקופסה שהשתנתה
+  - Width?, Height?, Depth?, WeightKg?, IsFragile?, AllowRotation?
+    — מידות בזמן השינוי (nullable)
+  - Quantity?         — כמות בזמן השינוי
+  - ChangedBy         — שם המשתמש שביצע את השינוי
+  - ChangedByType     — "Admin" / "User"
+  - ChangedAt         — תאריך ושעה
+
+למה נוצרה:
+  יומן שינויים לקופסות בתוך סשן. כל פעולה (הוספה/מחיקה/עדכון)
+  נרשמת כדי שהמנהל יוכל לעקוב אחרי מה קרה בסשן.
+
+מי משתמש ובאיזו מטרה:
+  - SessionController — כותב רשומה לאחר כל שינוי קופסה
+  - GET /api/session/{id}/audit — קריאת היומן
+  - ממשק: כפתור "יומן שינויים" בדף sessions-manager
+  - טבלת DB: BoxAuditLog
+
+---------------------------------------------------------------
+4. AccessRequest.cs                                      [DB]
+---------------------------------------------------------------
+מה יש:
+  - RequestId, SessionId, SessionUserId — מזהים
+  - Status        — "Pending" / "Approved" / "Denied"
+  - RequestedAt   — מתי נשלחה הבקשה
+  - RespondedAt?  — מתי ניתנה תשובה
+  - DisplayName?, Email? — שדות JOIN מטבלת SessionUsers
+
+למה נוצרה:
+  משתמש שנכנס לסשן דרך קישור מגיש בקשת גישה.
+  המנהל רואה את הבקשה ויכול לאשר או לדחות.
+
+מי משתמש ובאיזו מטרה:
+  - SessionController — POST /api/session/{id}/request-access
+  - SessionController — PUT /api/session/{id}/requests/{reqId}
+  - ממשק: כפתור "בקשות" בדף sessions-manager
+  - טבלת DB: AccessRequest
+
+---------------------------------------------------------------
+5. Container.cs                                          [DB]
+---------------------------------------------------------------
+מה יש:
+  - ContainerId, TemplateId  — מזהים
+  - ContainerCode            — קוד ייחודי (למשל "CNT-001")
+  - Status                   — Available / Loading / Closed
+  - CreatedAt
+  - Template (navigation)    — הפניה לתבנית המכולה
+
+למה נוצרה:
+  מייצגת מכולה פיזית ספציפית שאליה משובצות הקופסאות.
+  שונה מ-ContainerTemplate — כאן מדובר במכולה בפועל, לא תבנית.
+
+מי משתמש ובאיזו מטרה:
+  - ContainerController — CRUD של מכולות
+  - PackingJob          — כל Job מקושר למכולה אחת
+  - טבלת DB: Container
+
+---------------------------------------------------------------
+6. ContainerTemplate.cs                                  [DB]
+---------------------------------------------------------------
+מה יש:
+  - TemplateId, TemplateName — מזהה ושם
+  - Width, Height, Depth     — מידות
+  - MaxWeightKg              — משקל מקסימלי
+  - Volume (computed)        — נפח
+
+למה נוצרה:
+  תבנית / סוג מכולה (למשל "מכולה 20 פיט", "מכולה 40 פיט").
+  מכולה ספציפית (Container) מכילה מזהה תבנית.
+
+מי משתמש ובאיזו מטרה:
+  - ContainerController — GET /api/container/templates
+  - שימוש עקיף בכל חישוב שיבוץ דרך Container
+  - טבלת DB: ContainerTemplate
+
+---------------------------------------------------------------
+7. ContainerSnapshot.cs                                  [DB]
+---------------------------------------------------------------
+מה יש:
+  - Id, JobId
+  - LoadingStep  — מספר שלב הטעינה
+  - BoxName      — שם הקופסה שנוספה בשלב זה
+  - ImageData    — תמונת PNG בפורמט Base64
+  - CreatedAt
+
+למה נוצרה:
+  שמירת תמונת מצב של המכולה בכל שלב הוספת קופסה.
+  מאפשרת ל"נגן" את תהליך האריזה צעד אחר צעד.
+
+מי משתמש ובאיזו מטרה:
+  - SnapshotController — GET /api/snapshot/{jobId}
+  - ממשק: דף 03_snapshot-viewer.html
+  - טבלת DB: ContainerSnapshot
+
+---------------------------------------------------------------
+8. ErrorLog.cs                                           [DB]
+---------------------------------------------------------------
+מה יש:
+  - ErrorId, JobId?
+  - Context    — שם הפונקציה/מודול שבו קרתה השגיאה
+  - Message    — הודעת השגיאה
+  - StackTrace? — מחסנית הקריאות (אופציונלי)
+  - CreatedAt
+
+למה נוצרה:
+  רישום שגיאות שקרו במהלך ריצת אלגוריתם השיבוץ.
+  כשJob נכשל — פרטי השגיאה נשמרים כאן לצורך דיבאג.
+
+מי משתמש ובאיזו מטרה:
+  - PackingService — כותב לטבלה כשיש חריגה באלגוריתם
+  - PackingJobController — חשיפה אופציונלית למנהל
+  - טבלת DB: ErrorLog
+
+---------------------------------------------------------------
+9. PackingJob.cs                                         [DB]
+---------------------------------------------------------------
+מה יש:
+  - JobId, AdminId, ContainerId  — מזהים
+  - Status                       — Pending / Running / Completed / Failed
+  - BinsUsed?                    — כמה מכולות נדרשו
+  - VolumeUtilization?           — אחוז ניצול הנפח
+  - TotalWeightKg?               — משקל כולל
+  - SolveTimeSeconds?            — זמן ריצה
+  - IsOptimal?                   — האם הפתרון אופטימלי
+  - StatusMessage?               — הודעה נוספת על התוצאה
+  - CreatedAt, CompletedAt?
+
+למה נוצרה:
+  מייצגת "עבודת שיבוץ" — הרצת אלגוריתם על מכולה + קבוצת קופסאות.
+  שומרת את כל פרטי הריצה והתוצאה.
+
+מי משתמש ובאיזו מטרה:
+  - PackingJobController — POST /api/packing/run (יוצר ומריץ)
+  - PackingService        — מעדכן סטטוס בזמן ריצה
+  - VisualizationController — מחזיר תוצאות לצפייה
+  - טבלת DB: PackingJob
+
+---------------------------------------------------------------
+10. PackingJobBox.cs                                     [DB]
+---------------------------------------------------------------
+מה יש:
+  - JobBoxId, JobId, BoxId — מזהים
+  - Quantity               — כמות של הקופסה הזו ב-Job
+
+למה נוצרה:
+  טבלת קשר בין PackingJob לבין הקופסאות שהוכנסו לעבודה.
+  שולחים Job עם רשימת קופסאות + כמויות, זה נשמר כאן.
+
+מי משתמש ובאיזו מטרה:
+  - PackingJobController — בעת יצירת Job
+  - PackingService        — טוען את הקופסאות לפני הרצה
+  - טבלת DB: PackingJobBox
+
+---------------------------------------------------------------
+11. PackingSession.cs                                    [DB]
+---------------------------------------------------------------
+מה יש:
+  - SessionId, AdminId  — מזהים
+  - Name, Description   — שם ותיאור הסשן
+  - LinkToken           — טוקן ייחודי לקישור שיתוף
+  - Status              — "Open" / "Closed"
+  - CreatedAt
+
+למה נוצרה:
+  סשן הוא "תוכנית עבודה" שהמנהל פותח. הוא מאפשר למשתמשים
+  להצטרף דרך קישור, להוסיף בקשות לקופסאות, ולהריץ שיבוץ.
+
+מי משתמש ובאיזו מטרה:
+  - SessionController — CRUD מלא
+  - ממשק: דף 04_sessions-manager.html
+  - טבלת DB: PackingSession
+
+---------------------------------------------------------------
+12. PlacementResult.cs                                   [DB + JOIN]
+---------------------------------------------------------------
+מה יש:
+  - PlacementId, JobId, BoxId   — מזהים
+  - InstanceIndex               — מספר עותק הקופסה (0,1,2...)
+  - BinIndex                    — באיזו מכולה הונחה
+  - PosX, PosY, PosZ            — מיקום הפינה השמאלית-תחתונה-קדמית
+  - PlacedWidth, PlacedHeight, PlacedDepth — מידות לאחר סיבוב
+  - RotationIndex               — מספר הסיבוב (0-5)
+  - BoxName, IsFragile          — שדות JOIN מטבלת Boxes
+
+למה נוצרה:
+  שמירת תוצאת השיבוץ לכל קופסה ספציפית — איפה היא נמצאת
+  במרחב התלת-ממדי. זה הבסיס לתצוגה התלת-ממדית.
+
+מי משתמש ובאיזו מטרה:
+  - PackingService        — כותב את התוצאות לאחר הריצה
+  - VisualizationController — GET /api/visualization/{jobId}
+  - ממשק: דף 02_3d-result-viewer.html
+  - טבלת DB: PlacementResult
+
+---------------------------------------------------------------
+13. SessionBox.cs                                        [DB + JOIN]
+---------------------------------------------------------------
+מה יש:
+  - SessionBoxId, SessionId, BoxId — מזהים
+  - Quantity    — כמות
+  - AddedBy     — מי הוסיף (שם משתמש)
+  - AddedAt     — מתי
+  - BoxName, Width, Height, Depth, WeightKg, IsFragile, AllowRotation
+    — שדות JOIN מטבלת Boxes
+
+למה נוצרה:
+  קופסות שמשתמשים מוסיפים לסשן ספציפי. שונה מ-PackingJobBox —
+  כאן מדובר בשלב ה"הגשת בקשות" לפני הרצת האלגוריתם.
+
+מי משתמש ובאיזו מטרה:
+  - SessionController    — POST/PUT/DELETE /api/session/{id}/boxes
+  - ממשק: דף 01_main-packing-interface.html (כפתורי 💾 ✏️ 🗑)
+  - טבלת DB: SessionBox
+
+---------------------------------------------------------------
+14. SessionUser.cs                                       [DB]
+---------------------------------------------------------------
+מה יש:
+  - SessionUserId, SessionId — מזהים
+  - DisplayName              — שם תצוגה
+  - Email?                   — אימייל (אופציונלי)
+  - Token                    — טוקן גישה ייחודי למשתמש בסשן
+  - RootToken                — טוקן הבסיס של הסשן (LinkToken)
+  - CreatedAt
+
+למה נוצרה:
+  כשמשתמש נכנס דרך קישור הסשן — נוצרת רשומה כאן.
+  הטוקן מאמת אותו בפעולות עתידיות (כמו הוספת בקשות קופסאות).
+
+מי משתמש ובאיזו מטרה:
+  - SessionController — POST /api/session/join
+  - ממשק: דף 05_user-join.html
+  - טבלת DB: SessionUser
+
+---------------------------------------------------------------
+== קובץ ComputationModels.cs — מחלקות חישוב (לא DB) ==     [CALC]
+---------------------------------------------------------------
+
+15. ContainerDimensions
+  עטיפה פשוטה של מידות מכולה לצורך העברה לאלגוריתם.
+  נוצרת ב-PackingService לפני הרצה. לא נשמרת ל-DB.
+
+16. BoxInstance
+  מופע ספציפי של קופסה (כשיש 10 עותקים של קופסה א' —
+  נוצרים BoxInstance#0 עד BoxInstance#9).
+  מאפשר לאלגוריתם לעבוד עם כל עותק בנפרד.
+  נוצרת ב-PackingService, משמשת את כל האלגוריתמים.
+
+17. Rotation
+  סיבוב אחד מתוך עד 6 האפשריים. שומר W/H/D לאחר סיבוב + Index.
+  נוצרת ב-Box.GetAllowedRotations(), נצרכת בכל האלגוריתמים.
+
+18. Position3D
+  קואורדינטות X,Y,Z בחלל המכולה. ערך בלתי-ניתן לשינוי (immutable).
+  נוצרת על-ידי האלגוריתם כשמוצא מיקום לקופסה.
+
+19. PlacedBox
+  קופסה שכבר קיבלה מיקום סופי = BoxInstance + Position3D + Rotation.
+  X1/Y1/Z1 הן הפינה האחת, X2/Y2/Z2 הן הפינה הנגדית.
+  OverlapsWith() — בדיקת חפיפה עם קופסה אחרת.
+
+20. PackingState
+  מחזיק את כל ה-PlacedBoxes שנוספו עד כה + משקל מצטבר.
+  משמש את B&B כ"מצב נוכחי" — ניתן להוסיף/להסיר קופסה אחרונה
+  ולשכפל מצב (Clone()) לצורך backtracking.
+
+21. BinStats
+  סטטיסטיקת מכולה אחת: נפח שנוצל, נפח בזבוז, אחוז ניצול.
+  נוצרת לאחר סיום האלגוריתם לצורך הצגת תוצאות.
+
+22. PackingResult
+  התוצאה הסופית של ריצת אלגוריתם:
+  - PlacedBoxes   — כל הקופסות ששובצו
+  - UnplacedBoxes — קופסות שלא הצליחו להתאים
+  - BinsUsed      — כמה מכולות נדרשו
+  - VolumeUtilization — אחוז ניצול
+  - IsOptimal, SolveTime, StatusMessage
+  - PerBinStats   — סטטיסטיקה לכל מכולה
+
+===============================================================
+  סיכום — מי משתמש במה
+===============================================================
+
+AלגOריתם (B&B / Greedy):
+  BoxInstance, Rotation, Position3D, PlacedBox, PackingState,
+  ContainerDimensions → PackingResult
+
+שמירת תוצאות ל-DB:
+  PackingResult → PlacementResult (שמירה שורה-שורה)
+  PackingJob     (עדכון סטטוס + סטטיסטיקות)
+
+ממשק סשן:
+  PackingSession, SessionUser, AccessRequest, SessionBox, BoxAuditLog
+
+ממשק ניהול:
+  Admin, Box, Container, ContainerTemplate, PackingJob
+
+תצוגה תלת-ממדית:
+  PlacementResult (קריאה לאחר הריצה) → VisualizationController

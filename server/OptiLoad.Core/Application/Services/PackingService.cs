@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using OptiLoad.Core.Algorithms;
 using OptiLoad.Core.Models;
@@ -20,20 +19,20 @@ namespace OptiLoad.Core.Services
         }
 
 public async Task<PackingResult> RunPackingJob(int jobId)
-        {
+    {
             if (_db == null)
                 throw new InvalidOperationException("DatabaseService לא מוגדר.");
 
-var container = await _db.GetContainerDimensions(jobId);
+            var container = await _db.GetContainerDimensions(jobId);
             var instances = await _db.GetJobBoxInstances(jobId);
 
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] משימה {jobId}: " +
                               $"{instances.Count} ארגזים, {container}");
 
-var solver = new BranchAndBoundSolver(container);
+            var solver = new BranchAndBoundSolver(container);
             var result = solver.Solve(instances);
 
-try
+            try
             {
                 await _db.SavePlacementResults(jobId, result);
                 await _db.CompleteJob(jobId, result);
@@ -44,85 +43,49 @@ try
                 throw;
             }
 
-PrintReport(result, container);
+            PrintReport(result, container);
 
-            // ייצוא אוטומטי של תוצאות לאותו נתיב כמו ב-API
-            try
-            {
-                var outputDir = @"C:\Users\1\Desktop\תכנות\משובצות\תוצאות פרויקט שיבוץ לדאטאבייס";
-                if (!Directory.Exists(outputDir))
-                    Directory.CreateDirectory(outputDir);
-                var filePath = Path.Combine(outputDir, $"optiload-export-job{jobId}.json");
-
-                // יצירת אובייקט JSON בפורמט דומה ל-API
-                var export = new
-                {
-                    jobId = jobId,
-                    exportedAt = DateTime.UtcNow,
-                    totalBoxes = result.PlacedBoxes.Count,
-                    loadingSequence = result.PlacedBoxes.Select((pb, idx) => new {
-                        loadingStep = idx + 1,
-                        boxName = pb.Instance.BoxDefinition.BoxName,
-                        x = pb.X1,
-                        y = pb.Y1,
-                        z = pb.Z1,
-                        width = pb.Rotation.W,
-                        height = pb.Rotation.H,
-                        depth = pb.Rotation.D,
-                        binIndex = pb.BinIndex,
-                        isFragile = pb.Instance.BoxDefinition.IsFragile
-                    }).ToList(),
-                    // לא נוס תמונות כאן כי אין Snapshots ב-InMemory
-                    snapshots = new object[0]
-                };
-                var json = JsonSerializer.Serialize(export, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                });
-                System.IO.File.WriteAllText(filePath, json);
-            }
-            catch (Exception ex)
-            {
-                // אפשר להוסיף לוג או טיפול בשגיאה
-            }
             return result;
-        }
-
-        public async Task<PackingResult> RunPackingJobWithTimeLimit(int jobId, double timeLimitSeconds)
-        {
-            if (_db == null)
+            }
+        
+        
+        
+public async Task<PackingResult> RunPackingJobWithTimeLimit(int jobId, double timeLimitSeconds)
+{
+            if (_db == null)//בודק אם שירות הדאטאבייס מוגדר, אם לא, זורק חריגה כי לא ניתן להמשיך בלי גישה לנתונים
                 throw new InvalidOperationException("DatabaseService לא מוגדר.");
-
+            //משתמש בשירות הדאטאבייס כדי לקבל את מידות המכולה ואת רשימת מופעי הקופסאות עבור המשימה הנתונה
             var container = await _db.GetContainerDimensions(jobId);
             var instances = await _db.GetJobBoxInstances(jobId);
-
+            //יוצר מופע של הפותר BranchAndBoundSolver עם המכולה הנתונה, ומגדיר את מגבלת הזמן
             var solver = new BranchAndBoundSolver(container)
             {
                 TimeLimitSeconds = timeLimitSeconds
             };
+            //מריץ את הפותר בצורה אסינכרונית כדי לא לחסום את ה-thread הנוכחי, ומקבל את תוצאות הפתרון
+            var result = await Task.Run(() => solver.Solve(instances));
 
-var result = await Task.Run(() => solver.Solve(instances));
-
-            try
+            try//שומר את תוצאות הפתרון במסד
             {
-                await _db.SavePlacementResults(jobId, result);
-                await _db.CompleteJob(jobId, result);
+                await _db.SavePlacementResults(jobId, result);//שומר את תוצאות השיבוץ של העבודה במסד הנתונים
+                await _db.CompleteJob(jobId, result);//מסיים את העבודה ושומר את תוצאות השיבוץ שלה במסד הנתונים
             }
-            catch (Exception ex)
+            catch (Exception ex)//אם יש שגיאה בשמירת התואות, ישמור את השגיאה ויזרוק למשתמש
             {
                 await _db.LogError(jobId, "RunPackingJobWithTimeLimit", ex);
                 throw;
             }
 
-            return result;
-        }
+            return result;//מחזיר את תוצאות הפתרון של משימת האריזה
+}
+
+
 
 public PackingResult RunPackingJobInMemory(
             ContainerDimensions      container,
             IEnumerable<BoxInstance> instances,
             double                   timeLimitSeconds = 300.0)
-        {
+{
             var instanceList = instances.ToList();
 
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] In-Memory: " +
@@ -139,6 +102,8 @@ public PackingResult RunPackingJobInMemory(
             return result;
         }
 
+
+
 public static void PrintReport(PackingResult result, ContainerDimensions container)
         {
             Console.WriteLine();
@@ -154,7 +119,7 @@ public static void PrintReport(PackingResult result, ContainerDimensions contain
             Console.WriteLine($"  סטטוס:             {result.StatusMessage}");
             Console.WriteLine("───────────────────────────────────────────────────");
 
-var jsonOutput = result.PlacedBoxes.Select(pb => new PlacementJsonDto
+        var jsonOutput = result.PlacedBoxes.Select(pb => new PlacementJsonDto
             {
                 Box      = pb.Instance.InstanceId,
                 X        = Math.Round(pb.X1, 4),
@@ -189,33 +154,18 @@ var jsonOutput = result.PlacedBoxes.Select(pb => new PlacementJsonDto
         }
     }
 
+
+
 public class PlacementJsonDto
     {
-        [JsonPropertyName("box")]
-        public string Box  { get; set; } = string.Empty;
-
-        [JsonPropertyName("x")]
-        public double X    { get; set; }
-
-        [JsonPropertyName("y")]
-        public double Y    { get; set; }
-
-        [JsonPropertyName("z")]
-        public double Z    { get; set; }
-
-        [JsonPropertyName("w")]
-        public double W    { get; set; }
-
-        [JsonPropertyName("h")]
-        public double H    { get; set; }
-
-        [JsonPropertyName("d")]
-        public double D    { get; set; }
-
-        [JsonPropertyName("rotation")]
+        public string Box     { get; set; } = string.Empty;
+        public double X       { get; set; }
+        public double Y       { get; set; }
+        public double Z       { get; set; }
+        public double W       { get; set; }
+        public double H       { get; set; }
+        public double D       { get; set; }
         public int    Rotation { get; set; }
-
-        [JsonPropertyName("fragile")]
         public bool   Fragile { get; set; }
     }
 }

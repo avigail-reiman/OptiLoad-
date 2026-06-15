@@ -76,6 +76,19 @@ tr:last-child td{border-bottom:none}
   border:1px solid #30363d;border-radius:8px;padding:10px 20px;font-size:13px;
   color:#e6edf3;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1}
+
+.btn-audit{background:rgba(139,92,246,.1);border-color:#7c3aed;color:#a78bfa}
+.btn-audit:hover{background:rgba(139,92,246,.25)}
+.audit-modal{max-width:700px;width:95%}
+.audit-modal h3{font-size:16px}
+.audit-table-wrap{max-height:400px;overflow-y:auto;margin-top:12px;border:1px solid #21262d;border-radius:8px}
+.audit-table-wrap table{width:100%;border-collapse:collapse}
+.audit-table-wrap th{color:#6e7681;font-size:12px;padding:8px 10px;border-bottom:1px solid #30363d;text-align:right;position:sticky;top:0;background:#161b22;font-weight:600}
+.audit-table-wrap td{padding:8px 10px;border-bottom:1px solid #21262d;font-size:13px;color:#e6edf3}
+.audit-table-wrap tr:last-child td{border-bottom:none}
+.audit-added{color:#3fb950;font-weight:600}
+.audit-updated{color:#e3b341;font-weight:600}
+.audit-deleted{color:#f85149;font-weight:600}
 </style>
 </head>
 <body>
@@ -86,6 +99,7 @@ tr:last-child td{border-bottom:none}
     <button class="btn btn-secondary" onclick="location.href='01_main-packing-interface.html'">🚛 ממשק שיבוץ</button>
     <button class="btn btn-secondary" onclick="location.href='03_snapshot-viewer.html'">📸 תמונות</button>
     <button class="btn btn-primary" onclick="openCreateModal()">+ תוכנית חדשה</button>
+    <button class="btn btn-secondary" onclick="openRegisterModal()">הוסף מנהל חדש</button>
     <button class="btn btn-secondary" onclick="logout()">יציאה</button>
   </div>
 </div>
@@ -113,10 +127,45 @@ tr:last-child td{border-bottom:none}
   </div>
 </div>
 
+<!-- Modal: רישום מנהל חדש -->
+<div class="modal-overlay" id="register-modal">
+  <div class="modal">
+    <h3>הוסף מנהל חדש</h3>
+    <div class="form-group">
+      <label>שם משתמש *</label>
+      <input id="reg-username" type="text" placeholder="לדוגמא: admin2" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>סיסמא * (לפחות 6 תווים)</label>
+      <input id="reg-password" type="password" placeholder="סיסמא">
+    </div>
+    <div class="form-group">
+      <label>אימות סיסמא *</label>
+      <input id="reg-password2" type="password" placeholder="חזור על הסיסמא">
+    </div>
+    <div id="reg-error" style="color:#f85149;font-size:12px;margin-top:-8px;display:none"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeRegisterModal()">ביטול</button>
+      <button class="btn btn-primary" onclick="registerAdmin()">צור מנהל</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: יומן שינויים -->
+<div class="modal-overlay" id="audit-modal">
+  <div class="modal audit-modal">
+    <h3>📋 יומן שינויים — <span id="audit-session-name" style="color:#e6edf3"></span></h3>
+    <div id="audit-content"><span style="color:#484f58">טוען...</span></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('audit-modal').classList.remove('show')">סגור</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
-const API = 'http://localhost:5098';
+const API = window.location.origin;
 const token = sessionStorage.getItem('optiload_token');
 if (!token) location.href = 'login.html';
 
@@ -176,6 +225,7 @@ function buildSessionCard(s) {
       <div style="display:flex;gap:8px;flex-shrink:0">
         <button class="btn btn-sm" style="background:linear-gradient(135deg,#238636,#1a7f37);border-color:#2ea043;color:#fff" onclick="location.href='01_main-packing-interface.html?sessionId=${s.sessionId}'">▶ הרץ שיבוץ</button>
         <button class="btn btn-sm btn-secondary" onclick="toggleStatus(${s.sessionId},'${toggleStatus}')">${toggleLabel}</button>
+        <button class="btn btn-sm btn-audit" onclick="openAuditModal(${s.sessionId},\`${escHtml(s.name)}\`)">📋 יומן</button>
         <button class="btn btn-sm btn-danger" onclick="deleteSession(${s.sessionId})">מחק</button>
       </div>
     </div>
@@ -269,6 +319,41 @@ async function deleteBox(sessionId, sessionBoxId) {
 function openCreateModal()  { document.getElementById('create-modal').classList.add('show'); }
 function closeCreateModal() { document.getElementById('create-modal').classList.remove('show'); }
 
+function openRegisterModal() {
+  document.getElementById('reg-username').value = '';
+  document.getElementById('reg-password').value = '';
+  document.getElementById('reg-password2').value = '';
+  document.getElementById('reg-error').style.display = 'none';
+  document.getElementById('register-modal').classList.add('show');
+}
+function closeRegisterModal() { document.getElementById('register-modal').classList.remove('show'); }
+
+async function registerAdmin() {
+  const username = document.getElementById('reg-username').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const password2 = document.getElementById('reg-password2').value;
+  const errEl = document.getElementById('reg-error');
+  errEl.style.display = 'none';
+
+  if (!username) { errEl.textContent = 'יש להזין שם משתמש'; errEl.style.display = 'block'; return; }
+  if (password.length < 6) { errEl.textContent = 'סיסמא קצרה מדי — לפחות 6 תווים'; errEl.style.display = 'block'; return; }
+  if (password !== password2) { errEl.textContent = 'הסיסמאות אינן זהות'; errEl.style.display = 'block'; return; }
+
+  const r = await apiFetch('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ username, password })
+  });
+  if (!r) return;
+  if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    errEl.textContent = data.error || 'שגיאה ביצירת המנהל';
+    errEl.style.display = 'block';
+    return;
+  }
+  closeRegisterModal();
+  showToast(`מנהל '${username}' נוסף בהצלחה ✓`);
+}
+
 async function createSession() {
   const name = document.getElementById('new-name').value.trim();
   const desc = document.getElementById('new-desc').value.trim();
@@ -305,6 +390,36 @@ function escHtml(s) {
 }
 function statusHe(s) { return { Pending:'ממתין', Approved:'מאושר', Denied:'נדחה' }[s] || s; }
 
+// ── Audit log ──────────────────────────────────────────────
+async function openAuditModal(sessionId, name) {
+  document.getElementById('audit-session-name').textContent = name;
+  document.getElementById('audit-content').innerHTML = '<span style="color:#484f58">טוען...</span>';
+  document.getElementById('audit-modal').classList.add('show');
+
+  const r = await apiFetch(`/api/session/${sessionId}/audit`);
+  if (!r) return;
+  const logs = await r.json();
+  const el = document.getElementById('audit-content');
+
+  if (!logs.length) {
+    el.innerHTML = '<p style="color:#484f58;text-align:center;padding:24px 0">אין שינויים מתועדים לתוכנית זו</p>';
+    return;
+  }
+
+  el.innerHTML = `<div class="audit-table-wrap"><table>
+    <thead><tr><th>תאריך</th><th>פעולה</th><th>שם ארגז</th><th>כמות</th><th>בוצע ע"י</th><th>סוג</th></tr></thead>
+    <tbody>${logs.map(l => `
+      <tr>
+        <td style="color:#8b949e;white-space:nowrap">${new Date(l.changedAt).toLocaleString('he-IL')}</td>
+        <td class="${l.action === 'Added' ? 'audit-added' : l.action === 'Updated' ? 'audit-updated' : 'audit-deleted'}">${l.action === 'Added' ? '➕ הוסף' : l.action === 'Updated' ? '✏️ עודכן' : '🗑 הוסר'}</td>
+        <td>${escHtml(l.boxName || '—')}</td>
+        <td>${l.quantity ?? '—'}</td>
+        <td>${escHtml(l.changedBy)}</td>
+        <td style="color:#8b949e">${l.changedByType === 'Admin' ? '👑 מנהל' : '👤 משתמש'}</td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
 loadSessions();
 // Auto-refresh requests every 15s
 setInterval(() => {
@@ -312,7 +427,11 @@ setInterval(() => {
     const id = el.id.replace('requests-', '');
     loadRequests(parseInt(id));
   });
-}, 15000);
+  document.querySelectorAll('[id^="boxes-"]').forEach(el => {
+    const id = el.id.replace('boxes-', '');
+    loadBoxes(parseInt(id));
+  });
+}, 5000);
 </script>
 </body>
 </html>

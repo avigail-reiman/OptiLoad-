@@ -55,6 +55,16 @@ td input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:#58a6
 .btn-del{background:none;border:none;color:#6e7681;cursor:pointer;
          font-size:13px;padding:2px 5px;transition:color .15s}
 .btn-del:hover{color:#f85149}
+.btn-save-row{background:none;border:none;color:#3fb950;cursor:pointer;
+              font-size:13px;padding:2px 5px;transition:color .15s;opacity:.7}
+.btn-save-row:hover{opacity:1}
+.btn-edit-row{background:none;border:none;color:#58a6ff;cursor:pointer;
+              font-size:13px;padding:2px 5px;transition:color .15s;opacity:.7}
+.btn-edit-row:hover{opacity:1}
+.btn-confirm-edit{background:none;border:none;color:#3fb950;cursor:pointer;
+                  font-size:13px;padding:2px 5px;font-weight:700}
+.btn-cancel-edit{background:none;border:none;color:#8b949e;cursor:pointer;
+                 font-size:13px;padding:2px 5px}
 
 .btn-add{background:#0d1f35;border:1px dashed #1f6feb;border-radius:6px;
          color:#58a6ff;cursor:pointer;font-size:12px;width:100%;
@@ -248,8 +258,8 @@ td input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:#58a6
       <span class="stat-val warn" id="r-unplaced"></span></div>
     <div class="stat-row"><span>⏱ זמן חישוב</span>
       <span class="stat-val" id="r-time"></span></div>
-    <div class="stat-row"><span>🎯 אופטימלי</span>
-      <span class="stat-val" id="r-opt"></span></div>
+    <div class="stat-row" id="row-opt" style="display:none"><span>🎯 אופטימלי</span>
+      <span class="stat-val" id="r-opt">כן ✓</span></div>
   </div>
 
   <!-- Legend -->
@@ -346,14 +356,26 @@ new ResizeObserver(resize).observe(wrap);
 })();
 
 // ─── Box table rows ───────────────────────────────────────────────
-let rid = 0;
-function addBoxRow(b) {
+let rid = 0;function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}function addBoxRow(b) {
   b = b || {name:'', w:50, h:50, d:50, kg:5, qty:1, fragile:false, rot:true};
+  // Remove any message/placeholder rows (rows that have no inputs)
+  document.querySelectorAll('#boxes-tbody tr').forEach(tr => {
+    if (tr.querySelectorAll('input').length === 0) tr.remove();
+  });
   const id = 'r' + (rid++);
   const tr = document.createElement('tr');
   tr.id = id;
+  if (b.sessionBoxId) tr.dataset.sessionBoxId = b.sessionBoxId;
+  const editBtn = (b.sessionBoxId && _urlSessionId)
+    ? `<button class="btn-edit-row" onclick="startEditRow('${id}')" title="ערוך כמות">✏️</button>`
+    : '';
+  const saveBtn = (_urlSessionId && !b.sessionBoxId)
+    ? `<button class="btn-save-row" onclick="saveBoxRow('${id}')" title="שמור לסשן">💾</button>`
+    : '';
   tr.innerHTML =
-    `<td><input type="text"   value="${b.name}" style="width:66px"></td>` +
+    `<td><input type="text"   value="${esc(b.name)}" style="width:66px"></td>`  +
     `<td><input type="number" value="${b.w}"   min="1" style="width:40px"></td>` +
     `<td><input type="number" value="${b.h}"   min="1" style="width:40px"></td>` +
     `<td><input type="number" value="${b.d}"   min="1" style="width:40px"></td>` +
@@ -361,12 +383,14 @@ function addBoxRow(b) {
     `<td><input type="number" value="${b.qty}" min="1" style="width:38px"></td>` +
     `<td style="text-align:center"><input type="checkbox" ${b.fragile ? 'checked' : ''}></td>` +
     `<td style="text-align:center"><input type="checkbox" ${b.rot    ? 'checked' : ''}></td>` +
-    `<td><button class="btn-del" onclick="document.getElementById('${id}').remove()">✕</button></td>`;
+    `<td>${saveBtn}<button class="btn-del" onclick="removeBoxRow('${id}')">✕</button>${editBtn}</td>`;
   document.getElementById('boxes-tbody').appendChild(tr);
 }
 
 function getBoxRows() {
-  return Array.from(document.querySelectorAll('#boxes-tbody tr')).map(tr => {
+  return Array.from(document.querySelectorAll('#boxes-tbody tr'))
+    .filter(tr => tr.querySelectorAll('input').length > 0)
+    .map(tr => {
     const i = tr.querySelectorAll('input');
     return {
       name: i[0].value || 'Box',
@@ -384,7 +408,7 @@ const _urlSessionId = new URLSearchParams(location.search).get('sessionId');
 
 async function loadSessionBoxes(sessionId) {
   try {
-    const r = await fetch(`http://localhost:5098/api/session/${sessionId}/boxes`,
+    const r = await fetch(`${window.location.origin}/api/session/${sessionId}/boxes`,
       { headers: getAuthHeaders() });
     if (r.status === 401) { logout(); return; }
     if (!r.ok) {
@@ -399,17 +423,18 @@ async function loadSessionBoxes(sessionId) {
       return;
     }
     boxes.forEach(b => addBoxRow({
-      name:    b.boxName || 'Box',
-      w:       b.width,
-      h:       b.height,
-      d:       b.depth,
-      kg:      b.weightKg,
-      qty:     b.quantity,
-      fragile: b.isFragile,
-      rot:     b.allowRotation
+      name:         b.boxName || 'Box',
+      w:            b.width,
+      h:            b.height,
+      d:            b.depth,
+      kg:           b.weightKg,
+      qty:          b.quantity,
+      fragile:      b.isFragile,
+      rot:          b.allowRotation,
+      sessionBoxId: b.sessionBoxId
     }));
     // מציג שם הסשן בכותרת
-    fetch(`http://localhost:5098/api/session/${sessionId}`, { headers: getAuthHeaders() })
+    fetch(`${window.location.origin}/api/session/${sessionId}`, { headers: getAuthHeaders() })
       .then(r2 => r2.ok ? r2.json() : null)
       .then(s => { if (s) document.querySelector('#sidebar h1').textContent = '🚛 ' + s.name; });
   } catch {
@@ -420,6 +445,106 @@ async function loadSessionBoxes(sessionId) {
 
 if (!_urlSessionId) {
   DEMO.forEach(b => addBoxRow(b));
+}
+
+// ─── Session box save / delete ────────────────────────────────────
+async function saveBoxRow(rowId) {
+  if (!_urlSessionId) return;
+  const tr = document.getElementById(rowId);
+  if (!tr) return;
+  const inputs = tr.querySelectorAll('input');
+  const body = {
+    boxName:       inputs[0].value.trim() || 'Box',
+    width:         +inputs[1].value,
+    height:        +inputs[2].value,
+    depth:         +inputs[3].value,
+    weightKg:      +inputs[4].value || 0,
+    quantity:      Math.max(1, +inputs[5].value),
+    isFragile:     inputs[6].checked,
+    allowRotation: inputs[7].checked
+  };
+  if (!body.width || !body.height || !body.depth) {
+    alert('יש להזין מידות תקינות (W, H, D)');
+    return;
+  }
+  const r = await fetch(`${window.location.origin}/api/session/${_urlSessionId}/boxes/custom`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(body)
+  });
+  if (r.status === 401) { logout(); return; }
+  if (!r.ok) { alert('שגיאה בשמירת הארגז'); return; }
+  const data = await r.json();
+  tr.dataset.sessionBoxId = data.sessionBoxId;
+  tr.querySelector('.btn-save-row')?.remove();
+}
+
+async function removeBoxRow(rowId) {
+  const tr = document.getElementById(rowId);
+  if (!tr) return;
+  const sessionBoxId = tr.dataset.sessionBoxId;
+  if (_urlSessionId && sessionBoxId) {
+    const r = await fetch(
+      `${window.location.origin}/api/session/${_urlSessionId}/boxes/${sessionBoxId}`,
+      { method: 'DELETE', headers: getAuthHeaders() }
+    );
+    if (r.status === 401) { logout(); return; }
+    if (!r.ok && r.status !== 404) { alert('שגיאה במחיקת הארגז'); return; }
+  }
+  tr.remove();
+}
+
+function startEditRow(rowId) {
+  const tr = document.getElementById(rowId);
+  if (!tr) return;
+  const qtyInput = tr.querySelectorAll('input')[5]; // quantity is index 5
+  const oldVal = qtyInput.value;
+  qtyInput.style.outline = '2px solid #58a6ff';
+  qtyInput.focus();
+  qtyInput.select();
+  // replace edit btn with confirm/cancel
+  const editBtn = tr.querySelector('.btn-edit-row');
+  if (editBtn) editBtn.outerHTML =
+    `<button class="btn-confirm-edit" onclick="confirmEditRow('${rowId}','${oldVal}')" title="שמור">✔</button>` +
+    `<button class="btn-cancel-edit" onclick="cancelEditRow('${rowId}','${oldVal}')" title="בטל">✖</button>`;
+}
+
+async function confirmEditRow(rowId, oldVal) {
+  const tr = document.getElementById(rowId);
+  if (!tr) return;
+  const inputs = tr.querySelectorAll('input');
+  const newQty = Math.max(1, parseInt(inputs[5].value) || 1);
+  const sessionBoxId = tr.dataset.sessionBoxId;
+  inputs[5].style.outline = '';
+
+  if (_urlSessionId && sessionBoxId) {
+    const r = await fetch(
+      `${window.location.origin}/api/session/${_urlSessionId}/boxes/${sessionBoxId}`,
+      { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ quantity: newQty }) }
+    );
+    if (r.status === 401) { logout(); return; }
+    if (!r.ok) { alert('שגיאה בעדכון'); inputs[5].value = oldVal; }
+  }
+  inputs[5].value = newQty;
+  // restore edit button
+  tr.querySelector('.btn-confirm-edit')?.remove();
+  tr.querySelector('.btn-cancel-edit')?.remove();
+  const lastTd = tr.querySelector('td:last-child');
+  lastTd.insertAdjacentHTML('beforeend',
+    `<button class="btn-edit-row" onclick="startEditRow('${rowId}')" title="ערוך כמות">✏️</button>`);
+}
+
+function cancelEditRow(rowId, oldVal) {
+  const tr = document.getElementById(rowId);
+  if (!tr) return;
+  const inputs = tr.querySelectorAll('input');
+  inputs[5].value = oldVal;
+  inputs[5].style.outline = '';
+  tr.querySelector('.btn-confirm-edit')?.remove();
+  tr.querySelector('.btn-cancel-edit')?.remove();
+  const lastTd = tr.querySelector('td:last-child');
+  lastTd.insertAdjacentHTML('beforeend',
+    `<button class="btn-edit-row" onclick="startEditRow('${rowId}')" title="ערוך כמות">✏️</button>`);
 }
 
 // ─── Color palette ────────────────────────────────────────────────
@@ -526,7 +651,7 @@ function renderResult(data) {
   document.getElementById('r-placed').textContent  = data.placedCount;
   document.getElementById('r-unplaced').textContent= data.unplacedCount;
   document.getElementById('r-time').textContent    = data.solveTime;
-  document.getElementById('r-opt').textContent     = data.isOptimal ? 'כן ✓' : 'לא (היוריסטי)';
+  document.getElementById('row-opt').style.display = data.isOptimal ? '' : 'none';
   document.getElementById('sec-results').style.display = 'block';
 
   // Legend
@@ -660,7 +785,6 @@ function drawContainerFrames(data) {
   return {CW, CH, CD, GAP, totalW};
 }
 
-// ─── Call API ─────────────────────────────────────────────────────
 async function runPacking(mode) {
   const btnI = document.getElementById('run-instant-btn');
   const btnS = document.getElementById('run-step-btn');
@@ -668,20 +792,25 @@ async function runPacking(mode) {
   btnI.disabled = btnS.disabled = true;
   ldr.classList.add('show');
 
-  const payload = {
-    container: {
-      width:       +document.getElementById('cw').value,
-      height:      +document.getElementById('ch').value,
-      depth:       +document.getElementById('cd').value,
-      maxWeightKg: +document.getElementById('cmw').value
-    },
-    timeLimitSeconds: +(document.getElementById('time-limit').value) || 10,
-    loadingFace:       document.getElementById('loading-face').value,
-    boxes: getBoxRows()
-  };
-
   try {
-    const res = await fetch('http://localhost:5098/api/visualization/run', {
+    const boxes = getBoxRows();
+    if (!boxes.length) {
+      alert('יש להוסיף לפחות ארגז אחד לפני הרצת השיבוץ.');
+      return;
+    }
+
+    const payload = {
+      container: {
+        width:       +document.getElementById('cw').value,
+        height:      +document.getElementById('ch').value,
+        depth:       +document.getElementById('cd').value,
+        maxWeightKg: +document.getElementById('cmw').value
+      },
+      timeLimitSeconds: +(document.getElementById('time-limit').value) || 10,
+      loadingFace:       document.getElementById('loading-face').value,
+      boxes
+    };
+    const res = await fetch(`${window.location.origin}/api/visualization/run`, {
       method:  'POST',
       headers: getAuthHeaders(),
       body:    JSON.stringify(payload)
@@ -767,7 +896,7 @@ async function saveSnapshotsToDb() {
 
   try {
     const jobId = currentJobId ?? 0;
-    const res = await fetch(`http://localhost:5098/api/snapshots/${jobId}`, {
+    const res = await fetch(`${window.location.origin}/api/snapshots/${jobId}`, {
       method:  'POST',
       headers: getAuthHeaders(),
       body:    JSON.stringify(snapshots)

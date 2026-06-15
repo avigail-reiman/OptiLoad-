@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>OptiLoad Diagrams</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #666; font-family: Arial, sans-serif; }
+
+  .page {
+    width: 190mm;
+    background: white;
+    margin: 28px auto;
+    padding: 12mm 14mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.5);
+  }
+
+  .page.portrait {
+    width: 170mm;
+  }
+
+  h2 {
+    font-size: 14pt;
+    margin-bottom: 6mm;
+    color: #0f172a;
+    text-align: center;
+    border-bottom: 2px solid #2563eb;
+    padding-bottom: 3mm;
+    width: 100%;
+  }
+
+  .mermaid {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .mermaid svg {
+    background: white !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1: USE CASE DIAGRAM -->
+<div class="page">
+  <h2>תרשים תרחישי שימוש — Use Case Diagram</h2>
+  <div class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {'background':'#ffffff','primaryColor':'#bfdbfe','primaryTextColor':'#1e293b','primaryBorderColor':'#2563eb','lineColor':'#475569','edgeLabelBackground':'#ffffff','secondaryColor':'#ffffff','tertiaryColor':'#ffffff','fontFamily':'Arial','fontSize':'13px'}}}%%
+flowchart TB
+    subgraph Actors [" "]
+        Admin(["👤 מנהל מערכת"])
+        Guest(["👤 משתמש שטח"])
+    end
+
+    subgraph sys ["מערכת OptiLoad"]
+        direction TB
+        UC01("UC-01 כניסה למערכת")
+        UC02("UC-02 ניהול ארגזים")
+        UC03("UC-03 הגדרת קונטיינר")
+        UC04("UC-04 יצירת משימת שיבוץ")
+        UC05("UC-05 הרצת אלגוריתם שיבוץ")
+        UC06("UC-06 צפייה בתוצאות 3D")
+        UC07("UC-07 ניהול תמונות מצב")
+        UC08("UC-08 ניהול סשנים")
+        UC09("UC-09 צפייה בסשן — שטח")
+        UC10("UC-10 ייצוא תכנית טעינה")
+    end
+
+    Admin --> UC01
+    Admin --> UC02
+    Admin --> UC03
+    Admin --> UC04
+    Admin --> UC05
+    Admin --> UC06
+    Admin --> UC07
+    Admin --> UC08
+    Admin --> UC10
+    Guest --> UC09
+
+    UC04 -.->|include| UC05
+    UC05 -.->|include| UC06
+    UC07 -.->|extend| UC06
+    UC09 -.->|extend| UC08
+    UC10 -.->|include| UC05
+  </div>
+</div>
+
+<!-- PAGE 2a: MODULE TREE — Core -->
+<div class="page portrait">
+  <h2>עץ מודולים — OptiLoad.Core</h2>
+  <div class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {'background':'#ffffff','primaryColor':'#bfdbfe','primaryTextColor':'#1e293b','primaryBorderColor':'#2563eb','lineColor':'#475569','secondaryColor':'#dcfce7','tertiaryColor':'#fef9c3','edgeLabelBackground':'#ffffff','fontFamily':'Arial','fontSize':'13px'}}}%%
+graph TD
+    CORE["📦 OptiLoad.Core\n(ללא תלויות חיצוניות)"]
+
+    CORE --> DOM["Domain"]
+    CORE --> APP["Application"]
+
+    DOM --> MODELS["Models"]
+    MODELS --> M1["Admin"]
+    MODELS --> M2["Box"]
+    MODELS --> M3["ContainerTemplate"]
+    MODELS --> M4["PackingJob"]
+    MODELS --> M5["PackingJobBox"]
+    MODELS --> M6["PlacementResult"]
+    MODELS --> M7["ContainerSnapshot"]
+    MODELS --> M8["PackingSession"]
+    MODELS --> M9["SessionUser"]
+    MODELS --> M10["SessionBox"]
+
+    DOM --> COMP["ComputationModels"]
+    COMP --> C1["ContainerDimensions"]
+    COMP --> C2["BoxInstance"]
+    COMP --> C3["Rotation"]
+    COMP --> C4["Position3D"]
+    COMP --> C5["PlacedBox"]
+    COMP --> C6["PackingState"]
+    COMP --> C7["PackingResult"]
+    COMP --> C8["BinStats"]
+
+    DOM --> IFACES["Interfaces"]
+    IFACES --> I1["IPackingRepository"]
+    IFACES --> I2["IAdminRepository"]
+    IFACES --> I3["ISnapshotRepository"]
+    IFACES --> I4["ISessionRepository"]
+
+    APP --> ALGO["Algorithms"]
+    ALGO --> A1["BranchAndBoundSolver"]
+    ALGO --> A2["HeuristicH1"]
+    ALGO --> A3["GreedySolver"]
+    ALGO --> A4["SingleBinFiller"]
+    ALGO --> A5["CornerPointsFinder"]
+    ALGO --> A6["GravitySettler"]
+    ALGO --> A7["LowerBoundCalculator"]
+    ALGO --> A8["LoadingSequencer"]
+
+    APP --> SVC["Services"]
+    SVC --> S1["PackingService"]
+    SVC --> S2["AdminService"]
+    SVC --> S3["PasswordHasher"]
+  </div>
+</div>
+
+<!-- PAGE 2b: MODULE TREE — Data, API, Tests, Client -->
+<div class="page portrait">
+  <h2>עץ מודולים — Data / API / Tests / Client</h2>
+  <div class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {'background':'#ffffff','primaryColor':'#bfdbfe','primaryTextColor':'#1e293b','primaryBorderColor':'#2563eb','lineColor':'#475569','secondaryColor':'#dcfce7','tertiaryColor':'#fef9c3','edgeLabelBackground':'#ffffff','fontFamily':'Arial','fontSize':'13px'}}}%%
+graph TD
+    DATA["📦 OptiLoad.Data\n(תלוי ב-Core)"]
+    API["📦 OptiLoad.API\n(תלוי ב-Core + Data)"]
+    TESTS["📦 OptiLoad.Tests\n(תלוי ב-Core)"]
+    CLIENT["📁 client/ (Frontend סטטי)"]
+
+    DATA --> DS["DatabaseService\nמממש: IPackingRepository\nIAdminRepository · ISnapshotRepository"]
+    DATA --> DSS["DatabaseSessionService\nמממש: ISessionRepository"]
+
+    API --> CTRL["Controllers"]
+    CTRL --> K1["AuthController"]
+    CTRL --> K2["BoxController"]
+    CTRL --> K3["ContainerController"]
+    CTRL --> K4["PackingJobController"]
+    CTRL --> K5["SnapshotController"]
+    CTRL --> K6["SessionController"]
+    CTRL --> K7["VisualizationController"]
+    CTRL --> K8["ExportController"]
+
+    API --> MW["Services"]
+    MW --> LRL["LoginRateLimiter\n(3 ניסיונות / 15 דקות נעילה)"]
+
+    API --> PRG["Program.cs\nDI + Middleware + JWT (2h)"]
+
+    TESTS --> T1["BoxTests"]
+    TESTS --> T2["BranchAndBoundTests"]
+    TESTS --> T3["GreedySolverTests"]
+    TESTS --> T4["LowerBoundTests"]
+
+    CLIENT --> P1["login.html"]
+    CLIENT --> P2["01_main-packing-interface.html"]
+    CLIENT --> P3["02_3d-result-viewer.html"]
+    CLIENT --> P4["03_snapshot-viewer.html"]
+    CLIENT --> P5["04_sessions-manager.html"]
+    CLIENT --> P6["05_user-join.html"]
+  </div>
+</div>
+
+<!-- PAGE 3: UML CLASS DIAGRAM - Domain Models -->
+<div class="page">
+  <h2>תרשים מחלקות UML — Domain Models</h2>
+  <div class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {'background':'#ffffff','primaryColor':'#bfdbfe','primaryTextColor':'#1e293b','primaryBorderColor':'#2563eb','lineColor':'#475569','secondaryColor':'#ffffff','tertiaryColor':'#ffffff','fontFamily':'Arial','fontSize':'12px'}}}%%
+classDiagram
+    class Admin {
+        +int Id
+        +string Username
+        +string PasswordHash
+        +DateTime CreatedAt
+    }
+    class Box {
+        +int Id
+        +string Name
+        +double Length
+        +double Width
+        +double Height
+        +double WeightKg
+        +bool IsFragile
+        +bool MustBeUpright
+        +int AdminId
+    }
+    class ContainerTemplate {
+        +int Id
+        +string Name
+        +double Length
+        +double Width
+        +double Height
+        +double MaxWeightKg
+        +int AdminId
+    }
+    class PackingJob {
+        +int Id
+        +string Name
+        +string Status
+        +bool IsOptimal
+        +double VolumeUtilization
+        +int ContainerTemplateId
+        +int AdminId
+    }
+    class PackingJobBox {
+        +int PackingJobId
+        +int BoxId
+        +int Quantity
+    }
+    class PlacementResult {
+        +int PackingJobId
+        +int BoxId
+        +double X
+        +double Y
+        +double Z
+        +string RotationType
+        +int LoadOrder
+    }
+    class ContainerSnapshot {
+        +int Id
+        +int PackingJobId
+        +string SnapshotData
+        +DateTime CreatedAt
+    }
+    class PackingSession {
+        +int Id
+        +int PackingJobId
+        +string LinkToken
+        +DateTime ExpiresAt
+        +bool IsActive
+    }
+    class SessionUser {
+        +int Id
+        +int SessionId
+        +string DeviceInfo
+    }
+    class SessionBox {
+        +int Id
+        +int SessionId
+        +int BoxId
+        +string Status
+    }
+
+    Admin "1" --> "*" Box : owns
+    Admin "1" --> "*" ContainerTemplate : owns
+    Admin "1" --> "*" PackingJob : creates
+    PackingJob "1" --> "*" PackingJobBox : contains
+    Box "1" --> "*" PackingJobBox : included in
+    PackingJob "1" --> "*" PlacementResult : results
+    PackingJob --> ContainerSnapshot : snapshot
+    PackingJob --> PackingSession : session
+    PackingSession "1" --> "*" SessionUser : users
+    PackingSession "1" --> "*" SessionBox : boxes
+  </div>
+</div>
+
+<!-- PAGE 4: UML CLASS DIAGRAM - Algorithm Classes -->
+<div class="page">
+  <h2>תרשים מחלקות UML — Algorithm Classes &amp; Repository Interfaces</h2>
+  <div class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {'background':'#ffffff','primaryColor':'#bfdbfe','primaryTextColor':'#1e293b','primaryBorderColor':'#2563eb','lineColor':'#475569','secondaryColor':'#dcfce7','tertiaryColor':'#ffffff','fontFamily':'Arial','fontSize':'12px'}}}%%
+classDiagram
+    class BranchAndBoundSolver {
+        -HeuristicH1 heuristic
+        -LowerBoundCalculator lbCalc
+        -GreedySolver greedySolver
+        +int MaxNodes = 10000000
+        +int TimeLimitSec = 300
+        +PackingResult Solve(input)
+    }
+    class HeuristicH1 {
+        +PackingResult Solve(input)
+    }
+    class GreedySolver {
+        +PackingResult Solve(input)
+    }
+    class LowerBoundCalculator {
+        +int L0(items, bin)
+        +int L1(items, bin)
+        +int L2(items, bin)
+    }
+    class CornerPointsFinder {
+        +List Find(placedBoxes)
+    }
+    class GravitySettler {
+        +void Settle(placedBoxes)
+    }
+    class LoadingSequencer {
+        +List Sequence(placedBoxes)
+    }
+    class SingleBinFiller {
+        +PackingResult Fill(boxes, bin)
+    }
+
+    class IPackingRepository {
+        +GetBoxes()
+        +SavePlacementResult()
+    }
+    class IAdminRepository {
+        +GetAdmin()
+        +SaveAdmin()
+    }
+    class ISnapshotRepository {
+        +SaveSnapshot()
+        +GetSnapshot()
+    }
+    class ISessionRepository {
+        +CreateSession()
+        +GetSession()
+    }
+    class DatabaseService {
+        +string ConnectionString
+    }
+    class DatabaseSessionService {
+        +string ConnectionString
+    }
+
+    BranchAndBoundSolver --> HeuristicH1 : uses
+    BranchAndBoundSolver --> LowerBoundCalculator : uses
+    BranchAndBoundSolver --> GreedySolver : fallback
+    BranchAndBoundSolver --> CornerPointsFinder : uses
+    BranchAndBoundSolver --> GravitySettler : uses
+    BranchAndBoundSolver --> LoadingSequencer : uses
+    HeuristicH1 --> SingleBinFiller : uses
+
+    DatabaseService ..|> IPackingRepository : implements
+    DatabaseService ..|> IAdminRepository : implements
+    DatabaseService ..|> ISnapshotRepository : implements
+    DatabaseSessionService ..|> ISessionRepository : implements
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: 'loose',
+    flowchart: { useMaxWidth: true, padding: 12 },
+    classDiagram: { useMaxWidth: true, diagramPadding: 12 }
+  });
+</script>
+</body>
+</html>

@@ -73,7 +73,7 @@ tr:last-child td{border-bottom:none}
 </div>
 
 <script>
-const API        = 'http://localhost:5098';
+const API        = window.location.origin;
 const params     = new URLSearchParams(location.search);
 const linkToken  = params.get('token');
 const USER_KEY   = 'optiload_user_token_' + linkToken;
@@ -84,7 +84,8 @@ if (!linkToken) {
 }
 
 let sessionInfo = null;
-let userToken   = localStorage.getItem(USER_KEY);
+let userToken   = sessionStorage.getItem(USER_KEY);
+let previousToken = null;  // token from a denied request, passed on retry
 
 // ── Step 1: load session info ───────────────────────────────
 async function init() {
@@ -112,7 +113,7 @@ async function init() {
 async function checkStatus() {
   try {
     const r = await fetch(`${API}/api/session/link/${linkToken}/status?userToken=${encodeURIComponent(userToken)}`);
-    if (!r.ok) { userToken = null; localStorage.removeItem(USER_KEY); showView('join'); return; }
+    if (!r.ok) { userToken = null; sessionStorage.removeItem(USER_KEY); showView('join'); return; }
     const data = await r.json();
 
     if (data.status === 'Approved') {
@@ -167,6 +168,14 @@ function showView(view, data = {}) {
       <div class="status-icon">❌</div>
       <h3>הגישה נדחתה</h3>
       <p>המנהל דחה את בקשת הגישה שלך</p>
+      <button class="btn btn-primary" style="margin-top:20px;max-width:220px" onclick="retryJoin()">נסה שוב</button>
+    </div>`;
+
+  } else if (view === 'blocked') {
+    el.innerHTML = `<div class="card status-box">
+      <div class="status-icon">🚫</div>
+      <h3>גישה חסומה</h3>
+      <p>עברת את מספר הבקשות המותר לתוכנית זו. ניתן לפנות למנהל ישירות.</p>
     </div>`;
 
   } else if (view === 'boxes') {
@@ -214,6 +223,14 @@ function showView(view, data = {}) {
   }
 }
 
+// נסה שוב אחרי דחייה
+function retryJoin() {
+  previousToken = userToken;            // remember the denied token
+  userToken = null;
+  sessionStorage.removeItem(USER_KEY);    // clear so page doesn't auto-poll
+  showView('join');
+}
+
 // ── Join ────────────────────────────────────────────────────
 async function submitJoin() {
   const name  = document.getElementById('inp-name').value.trim();
@@ -227,12 +244,13 @@ async function submitJoin() {
     const r = await fetch(`${API}/api/session/link/${linkToken}/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ displayName: name, email: email || null })
+      body: JSON.stringify({ displayName: name, email: email || null, previousToken: previousToken || null })
     });
+    if (r.status === 429) { showView('blocked'); return; }
     if (!r.ok) { err.textContent = 'שגיאה בשליחת הבקשה'; err.classList.add('show'); return; }
     const data = await r.json();
     userToken = data.userToken;
-    localStorage.setItem(USER_KEY, userToken);
+    sessionStorage.setItem(USER_KEY, userToken);
     showView('pending', { displayName: name });
   } catch {
     const err2 = document.getElementById('join-err');

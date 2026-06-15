@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using OptiLoad.Core.Services;
 using OptiLoad.Data;
+using OptiLoad.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,11 +38,12 @@ builder.Services.AddSingleton<IPackingRepository>(sp => sp.GetRequiredService<Da
 builder.Services.AddSingleton<IAdminRepository>(sp => sp.GetRequiredService<DatabaseService>());
 builder.Services.AddSingleton<ISnapshotRepository>(sp => sp.GetRequiredService<DatabaseService>());
 builder.Services.AddSingleton<ISessionRepository>(sp  => sp.GetRequiredService<DatabaseService>());
+//הזרקת תלויות
 builder.Services.AddScoped<PackingService>(sp =>
     new PackingService(sp.GetRequiredService<IPackingRepository>()));
-
 builder.Services.AddScoped<IAdminService, AdminService>(sp =>
     new AdminService(sp.GetRequiredService<IAdminRepository>()));
+builder.Services.AddSingleton<LoginRateLimiter>();
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("JWT key is not configured (Jwt:Key).");
 if (jwtKey.Length < 32)
@@ -51,6 +53,7 @@ builder.Services.AddAuthentication(options =>
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
+//וולידציות על הטוקן שמגיע מהלקוח, כדי לוודא שהוא חתום עם המפתח הנכון, ושלא שינו את התוכן שלו
 .AddJwtBearer(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
@@ -62,7 +65,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-var app = builder.Build();
+var app = builder.Build();//מחזירה אפליקציה
 
 app.UseResponseCompression();
 app.UseCors("DevFrontend");
@@ -123,5 +126,15 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.Use(async (ctx, next) =>
+{
+    ctx.Response.Headers["X-Content-Type-Options"]  = "nosniff";
+    ctx.Response.Headers["X-Frame-Options"]         = "DENY";
+    ctx.Response.Headers["X-XSS-Protection"]        = "1; mode=block";
+    ctx.Response.Headers["Referrer-Policy"]         = "strict-origin-when-cross-origin";
+    await next();
+});
+
 app.MapControllers();
 app.Run();

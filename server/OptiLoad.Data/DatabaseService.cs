@@ -161,17 +161,18 @@ public async Task SavePlacementResults(int jobId, PackingResult result)
             await cmd.ExecuteNonQueryAsync();
         }
 
-public async Task<int> CreatePackingJob(int containerId)
+public async Task<int> CreatePackingJob(int containerId, int adminId)
         {
             using var conn = new SqlConnection(_connectionString);
             using var cmd  = new SqlCommand(
-                "INSERT INTO PackingJob (ContainerId, Status, CreatedAt) " +
-                "VALUES (@ContainerId, 'Pending', @CreatedAt); " +
+                "INSERT INTO PackingJob (ContainerId, AdminId, Status, CreatedAt) " +
+                "VALUES (@ContainerId, @AdminId, 'Pending', @CreatedAt); " +
                 "SELECT SCOPE_IDENTITY();", conn)
             {
                 CommandType = CommandType.Text
             };
             cmd.Parameters.AddWithValue("@ContainerId", containerId);
+            cmd.Parameters.AddWithValue("@AdminId",     adminId);
             cmd.Parameters.AddWithValue("@CreatedAt",   DateTime.UtcNow);
 
             await conn.OpenAsync();
@@ -418,13 +419,14 @@ public async Task<List<ContainerTemplate>> GetAllContainerTemplates()
             return list;
         }
 
-public async Task<List<PackingJob>> GetAllJobs()
+public async Task<List<PackingJob>> GetAllJobs(int adminId)
         {
             using var conn = new SqlConnection(_connectionString);
-            using var cmd  = new SqlCommand("SELECT JobId, ContainerId, Status, BinsUsed, VolumeUtilization, TotalWeightKg, SolveTimeSeconds, IsOptimal, StatusMessage, CreatedAt, CompletedAt FROM PackingJob ORDER BY JobId DESC", conn)
+            using var cmd  = new SqlCommand("SELECT JobId, AdminId, ContainerId, Status, BinsUsed, VolumeUtilization, TotalWeightKg, SolveTimeSeconds, IsOptimal, StatusMessage, CreatedAt, CompletedAt FROM PackingJob WHERE AdminId=@AdminId ORDER BY JobId DESC", conn)
             {
                 CommandType = CommandType.Text
             };
+            cmd.Parameters.AddWithValue("@AdminId", adminId);
             await conn.OpenAsync();
             using var reader = await cmd.ExecuteReaderAsync();
             var list = new List<PackingJob>();
@@ -436,7 +438,7 @@ public async Task<List<PackingJob>> GetAllJobs()
         public async Task<PackingJob?> GetJobById(int jobId)
         {
             using var conn = new SqlConnection(_connectionString);
-            using var cmd  = new SqlCommand("SELECT JobId, ContainerId, Status, BinsUsed, VolumeUtilization, TotalWeightKg, SolveTimeSeconds, IsOptimal, StatusMessage, CreatedAt, CompletedAt FROM PackingJob WHERE JobId=@JobId", conn)
+            using var cmd  = new SqlCommand("SELECT JobId, AdminId, ContainerId, Status, BinsUsed, VolumeUtilization, TotalWeightKg, SolveTimeSeconds, IsOptimal, StatusMessage, CreatedAt, CompletedAt FROM PackingJob WHERE JobId=@JobId", conn)
             {
                 CommandType = CommandType.Text
             };
@@ -450,16 +452,17 @@ public async Task<List<PackingJob>> GetAllJobs()
         private static PackingJob ReadJob(SqlDataReader reader) => new()
         {
             JobId             = reader.GetInt32(0),
-            ContainerId       = reader.GetInt32(1),
-            Status            = Enum.Parse<JobStatus>(reader.GetString(2)),
-            BinsUsed          = reader.IsDBNull(3)  ? null : reader.GetInt32(3),
-            VolumeUtilization = reader.IsDBNull(4)  ? null : reader.GetDouble(4),
-            TotalWeightKg     = reader.IsDBNull(5)  ? null : reader.GetDouble(5),
-            SolveTimeSeconds  = reader.IsDBNull(6)  ? null : reader.GetDouble(6),
-            IsOptimal         = reader.IsDBNull(7)  ? null : reader.GetBoolean(7),
-            StatusMessage     = reader.IsDBNull(8)  ? null : reader.GetString(8),
-            CreatedAt         = reader.GetDateTime(9),
-            CompletedAt       = reader.IsDBNull(10) ? null : reader.GetDateTime(10)
+            AdminId           = reader.GetInt32(1),
+            ContainerId       = reader.GetInt32(2),
+            Status            = Enum.Parse<JobStatus>(reader.GetString(3)),
+            BinsUsed          = reader.IsDBNull(4)  ? null : reader.GetInt32(4),
+            VolumeUtilization = reader.IsDBNull(5)  ? null : reader.GetDouble(5),
+            TotalWeightKg     = reader.IsDBNull(6)  ? null : reader.GetDouble(6),
+            SolveTimeSeconds  = reader.IsDBNull(7)  ? null : reader.GetDouble(7),
+            IsOptimal         = reader.IsDBNull(8)  ? null : reader.GetBoolean(8),
+            StatusMessage     = reader.IsDBNull(9)  ? null : reader.GetString(9),
+            CreatedAt         = reader.GetDateTime(10),
+            CompletedAt       = reader.IsDBNull(11) ? null : reader.GetDateTime(11)
         };
 
 public async Task<bool> DeleteJob(int jobId)
@@ -483,7 +486,7 @@ foreach (var sql in new[]
         }
 
         public async Task<int> CreateContainer(int templateId, string code)
-        {            using var conn = new SqlConnection(_connectionString);
+        {   using var conn = new SqlConnection(_connectionString);
             using var cmd  = new SqlCommand(
                 "INSERT INTO Container (TemplateId, ContainerCode, Status, CreatedAt) VALUES (@TemplateId, @Code, 'Available', @CreatedAt); SELECT SCOPE_IDENTITY();", conn)
             {
@@ -533,12 +536,12 @@ foreach (var sql in new[]
             return list;
         }
 
-public async Task<int> UpsertBox(Box box)
+public async Task<int> UpsertBox(Box box)//פונקציה זו תבדוק אם קיים כבר קופסה עם אותו שם, ואם כן, תעדכן את המידע שלה, אחרת תיצור קופסה חדשה
         {
             using var conn = new SqlConnection(_connectionString);
             await conn.OpenAsync();
 
-using var check = new SqlCommand(
+            using var check = new SqlCommand(
                 "SELECT BoxId FROM Box WHERE BoxName = @BoxName", conn)
             { CommandType = CommandType.Text };
             check.Parameters.AddWithValue("@BoxName", box.BoxName);

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>OptiLoad Diagrams</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #888; font-family: Arial, sans-serif; }
+
+  .page {
+    width: 277mm;
+    background: white;
+    margin: 24px auto;
+    padding: 12mm 14mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.4);
+    page-break-after: always;
+    overflow: hidden;
+  }
+
+  h2 {
+    font-size: 15pt;
+    margin-bottom: 8mm;
+    color: #1a1a1a;
+    text-align: center;
+    border-bottom: 2px solid #3b82f6;
+    padding-bottom: 4mm;
+    width: 100%;
+  }
+
+  .mermaid {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    background: white;
+  }
+
+  .mermaid svg {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  @media print {
+    body { background: white; }
+    .page { margin: 0; box-shadow: none; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== USE CASE DIAGRAM ===== -->
+<div class="page">
+  <h2>תרשים תרחישי שימוש — Use Case Diagram</h2>
+  <div class="mermaid">
+flowchart LR
+    Admin(["👤 מנהל מערכת"])
+    Guest(["👤 משתמש שטח"])
+
+    subgraph sys ["מערכת OptiLoad"]
+        UC01("UC-01\nכניסה למערכת")
+        UC02("UC-02\nניהול ארגזים")
+        UC03("UC-03\nהגדרת קונטיינר")
+        UC04("UC-04\nיצירת משימת שיבוץ")
+        UC05("UC-05\nהרצת אלגוריתם שיבוץ")
+        UC06("UC-06\nצפייה בתוצאות תלת-ממד")
+        UC07("UC-07\nניהול תמונות מצב")
+        UC08("UC-08\nניהול סשנים")
+        UC09("UC-09\nצפייה בסשן — שטח")
+        UC10("UC-10\nייצוא תכנית טעינה")
+    end
+
+    Admin --> UC01
+    Admin --> UC02
+    Admin --> UC03
+    Admin --> UC04
+    Admin --> UC05
+    Admin --> UC06
+    Admin --> UC07
+    Admin --> UC08
+    Admin --> UC10
+    Guest --> UC09
+
+    UC04 -.->|include| UC05
+    UC05 -.->|include| UC06
+    UC07 -.->|extend| UC06
+    UC09 -.->|extend| UC08
+    UC10 -.->|include| UC05
+  </div>
+</div>
+
+<!-- ===== MODULE TREE ===== -->
+<div class="page">
+  <h2>עץ מודולים — Module Tree</h2>
+  <div class="mermaid">
+graph TD
+    SOL["🗂 OptiLoad Solution"]
+
+    SOL --> CORE["📦 OptiLoad.Core\n(ללא תלויות חיצוניות)"]
+    SOL --> DATA["📦 OptiLoad.Data\n(תלוי ב-Core)"]
+    SOL --> API["📦 OptiLoad.API\n(תלוי ב-Core + Data)"]
+    SOL --> TESTS["📦 OptiLoad.Tests\n(תלוי ב-Core)"]
+    SOL --> CLIENT["📁 client/ (Frontend)"]
+
+    CORE --> DOM["Domain"]
+    DOM --> MODELS["Models"]
+    MODELS --> M1["Admin · Box · ContainerTemplate"]
+    MODELS --> M2["PackingJob · PackingJobBox · PlacementResult"]
+    MODELS --> M3["ContainerSnapshot · PackingSession · SessionUser · SessionBox"]
+    MODELS --> COMP["ComputationModels"]
+    COMP --> C1["ContainerDimensions · BoxInstance · Rotation"]
+    COMP --> C2["Position3D · PlacedBox · PackingState · PackingResult · BinStats"]
+
+    DOM --> IFACES["Interfaces"]
+    IFACES --> I1["IPackingRepository"]
+    IFACES --> I2["IAdminRepository"]
+    IFACES --> I3["ISnapshotRepository"]
+    IFACES --> I4["ISessionRepository"]
+
+    CORE --> APP["Application"]
+    APP --> ALGO["Algorithms"]
+    ALGO --> A1["BranchAndBoundSolver · HeuristicH1 · GreedySolver"]
+    ALGO --> A2["SingleBinFiller · CornerPointsFinder · GravitySettler"]
+    ALGO --> A3["LowerBoundCalculator · LoadingSequencer"]
+
+    APP --> SVC["Services"]
+    SVC --> S1["PackingService · AdminService · PasswordHasher"]
+
+    DATA --> DS["DatabaseService\n(IPackingRepo + IAdminRepo + ISnapshotRepo)"]
+    DATA --> DSS["DatabaseSessionService\n(ISessionRepository)"]
+
+    API --> CTRL["Controllers (×8)"]
+    CTRL --> K1["AuthController · BoxController · ContainerController · PackingJobController"]
+    CTRL --> K2["SnapshotController · SessionController · VisualizationController · ExportController"]
+    API --> PRG["Program.cs (DI + Middleware + JWT)\nLoginRateLimiter"]
+
+    TESTS --> T1["BoxTests · BranchAndBoundTests\nGreedySolverTests · LowerBoundTests"]
+
+    CLIENT --> P1["login.html · 01_main-packing-interface.html"]
+    CLIENT --> P2["02_3d-result-viewer.html · 03_snapshot-viewer.html"]
+    CLIENT --> P3["04_sessions-manager.html · 05_user-join.html"]
+  </div>
+</div>
+
+<!-- ===== UML CLASS DIAGRAM ===== -->
+<div class="page">
+  <h2>תרשים מחלקות UML — Class Diagram</h2>
+  <div class="mermaid">
+classDiagram
+    direction LR
+
+    class Admin {
+        +int Id
+        +string Username
+        +string PasswordHash
+    }
+
+    class Box {
+        +int Id
+        +string Name
+        +double Length
+        +double Width
+        +double Height
+        +double WeightKg
+        +bool IsFragile
+        +bool MustBeUpright
+        +int AdminId
+    }
+
+    class ContainerTemplate {
+        +int Id
+        +string Name
+        +double Length
+        +double Width
+        +double Height
+        +double MaxWeightKg
+        +int AdminId
+    }
+
+    class PackingJob {
+        +int Id
+        +string Name
+        +string Status
+        +bool IsOptimal
+        +double VolumeUtilization
+        +int ContainerTemplateId
+        +int AdminId
+    }
+
+    class PackingJobBox {
+        +int PackingJobId
+        +int BoxId
+        +int Quantity
+    }
+
+    class PlacementResult {
+        +int PackingJobId
+        +int BoxId
+        +double X
+        +double Y
+        +double Z
+        +string RotationType
+        +int LoadOrder
+    }
+
+    class ContainerSnapshot {
+        +int Id
+        +int PackingJobId
+        +string SnapshotData
+    }
+
+    class PackingSession {
+        +int Id
+        +int PackingJobId
+        +string LinkToken
+        +DateTime ExpiresAt
+        +bool IsActive
+    }
+
+    class SessionUser {
+        +int Id
+        +int SessionId
+        +string DeviceInfo
+    }
+
+    class SessionBox {
+        +int Id
+        +int SessionId
+        +int BoxId
+        +string Status
+    }
+
+    class BranchAndBoundSolver {
+        -HeuristicH1 heuristic
+        -LowerBoundCalculator lbCalc
+        -GreedySolver greedySolver
+        +PackingResult Solve(input)
+    }
+
+    class HeuristicH1 {
+        +PackingResult Solve(input)
+    }
+
+    class GreedySolver {
+        +PackingResult Solve(input)
+    }
+
+    class LowerBoundCalculator {
+        +int L0(items, bin)
+        +int L1(items, bin)
+        +int L2(items, bin)
+    }
+
+    class CornerPointsFinder {
+        +List Find(state)
+    }
+
+    class GravitySettler {
+        +void Settle(placedBoxes)
+    }
+
+    class LoadingSequencer {
+        +List Sequence(placedBoxes)
+    }
+
+    class IPackingRepository {
+        interface
+        +GetBoxes()
+        +SavePlacementResult()
+    }
+
+    class IAdminRepository {
+        interface
+        +GetAdmin()
+        +SaveAdmin()
+    }
+
+    class ISnapshotRepository {
+        interface
+        +SaveSnapshot()
+        +GetSnapshot()
+    }
+
+    class ISessionRepository {
+        interface
+        +CreateSession()
+        +GetSession()
+    }
+
+    class DatabaseService {
+        +string ConnectionString
+    }
+
+    class DatabaseSessionService {
+        +string ConnectionString
+    }
+
+    Admin "1" --> "*" Box : owns
+    Admin "1" --> "*" ContainerTemplate : owns
+    Admin "1" --> "*" PackingJob : creates
+    PackingJob "1" --> "*" PackingJobBox : contains
+    Box "1" --> "*" PackingJobBox : in
+    PackingJob "1" --> "*" PlacementResult : results
+    PackingJob "1" --> "0..1" ContainerSnapshot : snapshot
+    PackingJob "1" --> "0..1" PackingSession : session
+    PackingSession "1" --> "*" SessionUser : users
+    PackingSession "1" --> "*" SessionBox : boxes
+
+    BranchAndBoundSolver --> HeuristicH1 : uses
+    BranchAndBoundSolver --> LowerBoundCalculator : uses
+    BranchAndBoundSolver --> GreedySolver : fallback
+    BranchAndBoundSolver --> CornerPointsFinder : uses
+    BranchAndBoundSolver --> GravitySettler : uses
+    BranchAndBoundSolver --> LoadingSequencer : uses
+
+    DatabaseService ..|> IPackingRepository
+    DatabaseService ..|> IAdminRepository
+    DatabaseService ..|> ISnapshotRepository
+    DatabaseSessionService ..|> ISessionRepository
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      background: '#ffffff',
+      primaryColor: '#dbeafe',
+      primaryTextColor: '#1e293b',
+      primaryBorderColor: '#3b82f6',
+      lineColor: '#475569',
+      secondaryColor: '#f0fdf4',
+      tertiaryColor: '#fefce8',
+      edgeLabelBackground: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '12px'
+    },
+    flowchart: { curve: 'basis', padding: 15, useMaxWidth: true },
+    classDiagram: { diagramPadding: 15, useMaxWidth: true }
+  });
+</script>
+</body>
+</html>

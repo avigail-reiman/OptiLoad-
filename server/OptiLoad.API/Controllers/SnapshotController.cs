@@ -22,6 +22,13 @@ namespace OptiLoad.API.Controllers
         {
             if (dtos == null || dtos.Count == 0)
                 return BadRequest("No snapshots provided.");
+            if (dtos.Count > 500)
+                return BadRequest("Too many snapshots in a single request (max 500).");
+
+            const int maxImageChars = 8 * 1024 * 1024; // 8 MB base64 ≈ 6 MB actual image
+            var oversized = dtos.FirstOrDefault(d => (d.ImageData?.Length ?? 0) > maxImageChars);
+            if (oversized != null)
+                return BadRequest($"Snapshot at step {oversized.LoadingStep} exceeds the 8 MB size limit.");
 
             var snapshots = dtos.Select(d => new ContainerSnapshot
             {

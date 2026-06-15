@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Class Diagram — API Layer</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#666;font-family:Arial,sans-serif}
+  .page{width:277mm;background:#fff;margin:22px auto;padding:10mm 11mm;box-shadow:0 2px 18px rgba(0,0,0,.45)}
+  h2{font-size:15pt;color:#0f172a;text-align:center;border-bottom:2px solid #b45309;padding-bottom:3mm;margin-bottom:2mm}
+  .subtitle{font-size:10pt;color:#475569;text-align:center;margin-bottom:4mm}
+  .sec{font-size:10pt;color:#b45309;font-weight:bold;margin:5mm 0 2mm;border-right:3px solid #b45309;padding-right:2mm;text-align:right}
+  .mermaid{width:100%;display:flex;justify-content:center;background:#fff}
+  .mermaid svg{max-width:100%!important;height:auto!important;background:#fff!important}
+  @media print{body{background:#fff}.page{margin:0;box-shadow:none;width:100%}}
+</style>
+</head>
+<body>
+<div class="page">
+  <h2>API Layer — Controllers &amp; Services</h2>
+  <p class="subtitle">OptiLoad.API</p>
+
+  <p class="sec">Controllers</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#fef3c7","primaryTextColor":"#0f172a","primaryBorderColor":"#b45309","lineColor":"#334155","fontFamily":"Arial","fontSize":"12px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+  class AuthController {
+    IAdminService _adminService-
+    LoginRateLimiter _rateLimiter-
+    Login(LoginRequest req) IActionResult+
+  }
+  class BoxController {
+    IPackingRepository _db-
+    GetAll() IActionResult+
+    GetById(int id) IActionResult+
+    Create(BoxRequest) IActionResult+
+    Update(int, BoxRequest) IActionResult+
+    Delete(int id) IActionResult+
+  }
+  class SessionController {
+    ISessionRepository _sessions-
+    IPackingRepository _db-
+    GetMySessions() IActionResult+
+    CreateSession(req) IActionResult+
+    GetBoxes(int id) IActionResult+
+    AddBox(int, AddBoxRequest) IActionResult+
+    UpdateBox(int, int, UpdateBoxRequest) IActionResult+
+    DeleteBox(int, int) IActionResult+
+    AddCustomBox(int, req) IActionResult+
+    GetAuditLog(int id) IActionResult+
+    JoinSession(string token, req) IActionResult+
+    ApproveRequest(int, int) IActionResult+
+    DenyRequest(int, int) IActionResult+
+  }
+  class VisualizationController {
+    PackingService _packingService-
+    RunVisualization(VisualizationRequest) IActionResult+
+  }
+  class SnapshotController {
+    ISnapshotRepository _snapshots-
+    SaveSnapshots(int, List) IActionResult+
+    GetSnapshots(int jobId) IActionResult+
+  }
+  class PackingJobController {
+    IPackingRepository _db-
+    GetJobs() IActionResult+
+    GetJob(int id) IActionResult+
+    CreateJob(req) IActionResult+
+  }
+  class ExportController {
+    IPackingRepository _db-
+    ExportCsv(int jobId) IActionResult+
+    ExportJson(int jobId) IActionResult+
+  }
+  AuthController --> IAdminService : uses
+  AuthController --> LoginRateLimiter : uses
+  BoxController --> IPackingRepository : uses
+  SessionController --> ISessionRepository : uses
+  SessionController --> IPackingRepository : uses
+  VisualizationController --> PackingService : uses
+  SnapshotController --> ISnapshotRepository : uses
+  PackingJobController --> IPackingRepository : uses
+  ExportController --> IPackingRepository : uses
+  </div>
+
+  <p class="sec">Services &amp; DTOs</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#fef3c7","primaryTextColor":"#0f172a","primaryBorderColor":"#b45309","lineColor":"#334155","fontFamily":"Arial","fontSize":"12px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+  class LoginRateLimiter {
+    int MaxAttempts = 3-
+    TimeSpan LockoutDuration = 5min-
+    IsLockedOut(string ip) bool+
+    RecordFailedAttempt(string ip)+
+    Reset(string ip)+
+  }
+  class VisualizationRequest {
+    ContainerDimensionsDto container+
+    List boxes+
+    int timeLimitSeconds+
+    string loadingFace+
+  }
+  class ContainerDimensionsDto {
+    double width+
+    double height+
+    double depth+
+    double maxWeightKg+
+  }
+  class BoxDto {
+    string name+
+    double w / h / d / weight+
+    int qty+
+    bool fragile / allowRotation+
+  }
+  VisualizationRequest --> ContainerDimensionsDto : contains
+  VisualizationRequest --> BoxDto : contains list
+  </div>
+</div>
+<script>mermaid.initialize({startOnLoad:true})</script>
+</body>
+</html>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#666;font-family:Arial,sans-serif}
+  .page{width:277mm;background:#fff;margin:22px auto;padding:10mm 11mm;box-shadow:0 2px 18px rgba(0,0,0,.45)}
+  h2{font-size:15pt;color:#0f172a;text-align:center;border-bottom:2px solid #b45309;padding-bottom:3mm;margin-bottom:2mm}
+  .subtitle{font-size:10pt;color:#475569;text-align:center;margin-bottom:5mm}
+  .sec{font-size:10pt;color:#b45309;font-weight:bold;margin:5mm 0 2mm;border-right:3px solid #b45309;padding-right:2mm}
+  .mermaid{width:100%;display:flex;justify-content:center;background:#fff}
+  .mermaid svg{max-width:100%!important;height:auto!important;background:#fff!important}
+  @media print{body{background:#fff}.page{margin:0;box-shadow:none;width:100%}}
+</style>
+</head>
+<body>
+<div class="page">
+  <h2>API Layer — Controllers &amp; Services</h2>
+  <p class="subtitle">OptiLoad.API</p>
+
+  <p class="sec">Controllers</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#fef3c7","primaryTextColor":"#0f172a","primaryBorderColor":"#b45309","lineColor":"#334155","fontFamily":"Arial","fontSize":"12px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+  class AuthController {
+    -IAdminService _adminService
+    -LoginRateLimiter _rateLimiter
+    +Login(LoginRequest) IActionResult
+  }
+  class BoxController {
+    -IPackingRepository _db
+    +GetAll() / GetById(int)
+    +Create() / Update() / Delete()
+  }
+  class SessionController {
+    -ISessionRepository _sessions
+    +GetMySessions() / CreateSession()
+    +GetBoxes() / AddBox() / DeleteBox()
+    +UpdateBox() / AddCustomBox()
+    +GetAuditLog() / JoinSession()
+    +ApproveRequest() / DenyRequest()
+  }
+  class VisualizationController {
+    -PackingService _packingService
+    +RunVisualization(VisualizationRequest)
+  }
+  class SnapshotController {
+    -ISnapshotRepository _snapshots
+    +SaveSnapshots() / GetSnapshots()
+  }
+  class PackingJobController {
+    -IPackingRepository _db
+    +GetJobs() / GetJob() / CreateJob()
+  }
+  class ExportController {
+    -IPackingRepository _db
+    +ExportCsv(int) / ExportJson(int)
+  }
+  AuthController --> IAdminService : uses
+  AuthController --> LoginRateLimiter : uses
+  BoxController --> IPackingRepository : uses
+  SessionController --> ISessionRepository : uses
+  VisualizationController --> PackingService : uses
+  SnapshotController --> ISnapshotRepository : uses
+  PackingJobController --> IPackingRepository : uses
+  ExportController --> IPackingRepository : uses
+  </div>
+
+  <p class="sec">Services &amp; DTOs</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#fef3c7","primaryTextColor":"#0f172a","primaryBorderColor":"#b45309","lineColor":"#334155","fontFamily":"Arial","fontSize":"12px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+  class LoginRateLimiter {
+    -int MaxAttempts = 3
+    -TimeSpan LockoutDuration = 5min
+    +IsLockedOut(string ip) bool
+    +RecordFailedAttempt(string ip)
+    +Reset(string ip)
+  }
+  class VisualizationRequest {
+    +ContainerDimensionsDto container
+    +List~BoxDto~ boxes
+    +int timeLimitSeconds
+    +string loadingFace
+  }
+  class ContainerDimensionsDto {
+    +double width / height / depth
+    +double maxWeightKg
+  }
+  class BoxDto {
+    +string name
+    +double w / h / d / weight
+    +int qty
+    +bool fragile / allowRotation
+  }
+  VisualizationRequest --> ContainerDimensionsDto : contains
+  VisualizationRequest --> BoxDto : contains list
+  </div>
+</div>
+<script>mermaid.initialize({startOnLoad:true})</script>
+</body>
+</html>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #666; font-family: Arial, sans-serif; }
+  .page {
+    width: 277mm;
+    background: #ffffff;
+    margin: 22px auto;
+    padding: 10mm 11mm;
+    box-shadow: 0 2px 18px rgba(0,0,0,0.45);
+  }
+  h2 {
+    font-size: 15pt;
+    color: #0f172a;
+    text-align: center;
+    border-bottom: 2px solid #b45309;
+    padding-bottom: 3mm;
+    margin-bottom: 5mm;
+  }
+  .subtitle {
+    font-size: 10pt;
+    color: #475569;
+    text-align: center;
+    margin-bottom: 5mm;
+    margin-top: -3mm;
+  }
+  .section-title {
+    font-size: 11pt;
+    color: #b45309;
+    font-weight: bold;
+    margin: 6mm 0 3mm 0;
+    border-right: 4px solid #b45309;
+    padding-right: 3mm;
+  }
+  .mermaid {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    background: #ffffff;
+  }
+  .mermaid svg {
+    max-width: 100% !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; box-shadow: none; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <h2>תרשים מחלקות — שכבת API (Presentation)</h2>
+  <p class="subtitle">OptiLoad.API — Controllers · Services · DTOs | ממשק HTTP בין לקוח לשרת</p>
+
+  <p class="section-title">Controllers — נקודות קצה REST</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#fef3c7","primaryTextColor":"#0f172a","primaryBorderColor":"#b45309","lineColor":"#334155","fontFamily":"Arial","fontSize":"12px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction TB
+
+  class AuthController {
+    -IAdminService _adminService
+    -LoginRateLimiter _rateLimiter
+    -IConfiguration _config
+    +Login(LoginRequest req) IActionResult
+  }
+
+  class BoxController {
+    -IPackingRepository _db
+    +GetAll() IActionResult
+    +GetById(int id) IActionResult
+    +Create(BoxRequest req) IActionResult
+    +Update(int id, BoxRequest req) IActionResult
+    +Delete(int id) IActionResult
+  }
+
+  class SessionController {
+    -ISessionRepository _sessions
+    -IPackingRepository _db
+    +GetMySessions() IActionResult
+    +CreateSession(CreateSessionRequest) IActionResult
+    +GetSession(int id) IActionResult
+    +UpdateStatus(int id, UpdateStatusRequest) IActionResult
+    +DeleteSession(int id) IActionResult
+    +GetRequests(int id) IActionResult
+    +ApproveRequest(int id, int reqId) IActionResult
+    +DenyRequest(int id, int reqId) IActionResult
+    +GetBoxes(int id) IActionResult
+    +AddBox(int id, AddBoxRequest) IActionResult
+    +DeleteBox(int id, int sessionBoxId) IActionResult
+    +AddCustomBox(int id, AddCustomBoxRequest) IActionResult
+    +GetAuditLog(int id) IActionResult
+    +JoinSession(string token, JoinRequest) IActionResult
+  }
+
+  class VisualizationController {
+    -PackingService _packingService
+    +RunVisualization(VisualizationRequest req) IActionResult
+  }
+
+  class SnapshotController {
+    -ISnapshotRepository _snapshots
+    +SaveSnapshots(int jobId, List snapshots) IActionResult
+    +GetSnapshots(int jobId) IActionResult
+    +DeleteSnapshots(int jobId) IActionResult
+  }
+
+  class PackingJobController {
+    -IPackingRepository _db
+    +GetJobs() IActionResult
+    +GetJob(int id) IActionResult
+    +CreateJob(CreateJobRequest) IActionResult
+  }
+
+  class ExportController {
+    -IPackingRepository _db
+    +ExportCsv(int jobId) IActionResult
+    +ExportJson(int jobId) IActionResult
+  }
+
+  class ContainerController {
+    -IPackingRepository _db
+    +GetAll() IActionResult
+    +GetTemplates() IActionResult
+    +CreateTemplate(ContainerTemplateRequest) IActionResult
+  }
+
+  AuthController --> IAdminService : uses
+  AuthController --> LoginRateLimiter : uses
+  BoxController --> IPackingRepository : uses
+  SessionController --> ISessionRepository : uses
+  SessionController --> IPackingRepository : uses
+  VisualizationController --> PackingService : uses
+  SnapshotController --> ISnapshotRepository : uses
+  PackingJobController --> IPackingRepository : uses
+  ExportController --> IPackingRepository : uses
+  ContainerController --> IPackingRepository : uses
+  </div>
+
+  <p class="section-title">Services ו-DTOs</p>
+  <div class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#ffffff","primaryColor":"#fef3c7","primaryTextColor":"#0f172a","primaryBorderColor":"#b45309","lineColor":"#334155","fontFamily":"Arial","fontSize":"12px"},"classDiagram":{"diagramPadding":10,"useMaxWidth":true}}}%%
+classDiagram
+  direction LR
+
+  class LoginRateLimiter {
+    -int MaxAttempts = 3
+    -TimeSpan LockoutDuration = 5min
+    +IsLockedOut(string ip) bool
+    +RecordFailedAttempt(string ip)
+    +Reset(string ip)
+  }
+
+  class VisualizationRequest {
+    +ContainerDimensionsDto container
+    +List~BoxDto~ boxes
+    +int timeLimitSeconds
+    +string loadingFace
+  }
+
+  class ContainerDimensionsDto {
+    +double width
+    +double height
+    +double depth
+    +double maxWeightKg
+  }
+
+  class BoxDto {
+    +string name
+    +double w
+    +double h
+    +double d
+    +double weight
+    +int qty
+    +bool fragile
+    +bool allowRotation
+  }
+
+  VisualizationRequest --> ContainerDimensionsDto : contains
+  VisualizationRequest --> BoxDto : contains list
+  AuthController --> LoginRateLimiter : uses
+  VisualizationController --> VisualizationRequest : receives
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true });
+</script>
+</body>
+</html>
