@@ -52,31 +52,28 @@ public async Task<PackingResult> RunPackingJob(int jobId)
         
 public async Task<PackingResult> RunPackingJobWithTimeLimit(int jobId, double timeLimitSeconds)
 {
-            if (_db == null)//בודק אם שירות הדאטאבייס מוגדר, אם לא, זורק חריגה כי לא ניתן להמשיך בלי גישה לנתונים
+            if (_db == null)
                 throw new InvalidOperationException("DatabaseService לא מוגדר.");
-            //משתמש בשירות הדאטאבייס כדי לקבל את מידות המכולה ואת רשימת מופעי הקופסאות עבור המשימה הנתונה
             var container = await _db.GetContainerDimensions(jobId);
             var instances = await _db.GetJobBoxInstances(jobId);
-            //יוצר מופע של הפותר BranchAndBoundSolver עם המכולה הנתונה, ומגדיר את מגבלת הזמן
             var solver = new BranchAndBoundSolver(container)
             {
                 TimeLimitSeconds = timeLimitSeconds
             };
-            //מריץ את הפותר בצורה אסינכרונית כדי לא לחסום את ה-thread הנוכחי, ומקבל את תוצאות הפתרון
             var result = await Task.Run(() => solver.Solve(instances));
 
             try//שומר את תוצאות הפתרון במסד
             {
-                await _db.SavePlacementResults(jobId, result);//שומר את תוצאות השיבוץ של העבודה במסד הנתונים
-                await _db.CompleteJob(jobId, result);//מסיים את העבודה ושומר את תוצאות השיבוץ שלה במסד הנתונים
+                await _db.SavePlacementResults(jobId, result);
+                await _db.CompleteJob(jobId, result);
             }
-            catch (Exception ex)//אם יש שגיאה בשמירת התואות, ישמור את השגיאה ויזרוק למשתמש
+            catch (Exception ex)
             {
                 await _db.LogError(jobId, "RunPackingJobWithTimeLimit", ex);
                 throw;
             }
 
-            return result;//מחזיר את תוצאות הפתרון של משימת האריזה
+            return result;
 }
 
 
@@ -84,7 +81,7 @@ public async Task<PackingResult> RunPackingJobWithTimeLimit(int jobId, double ti
 public PackingResult RunPackingJobInMemory(
             ContainerDimensions      container,
             IEnumerable<BoxInstance> instances,
-            double                   timeLimitSeconds = 300.0)
+            double                   timeLimitSeconds = AlgorithmConfig.DefaultInMemoryTimeLimitSeconds)
 {
             var instanceList = instances.ToList();
 

@@ -87,21 +87,22 @@ private static int ComputeL1OneDim(
                     return d <= p;
                 }).ToList();
 
-                if (jL.Count == 0 && jS.Count == 0) continue;
+                if (jL.Count > 0 || jS.Count > 0)
+                {
+                    double sumDs   = jS.Sum(b => getDim3(b.BoxDefinition));
+                    double sumDl   = jL.Sum(b => getDim3(b.BoxDefinition));
+                    int    countLarge = jWH.Count(b => getDim3(b.BoxDefinition) > D / 2.0);
 
-                double sumDs   = jS.Sum(b => getDim3(b.BoxDefinition));
-                double sumDl   = jL.Sum(b => getDim3(b.BoxDefinition));
-                int    countLarge = jWH.Count(b => getDim3(b.BoxDefinition) > D / 2.0);
+                    double numerator1 = sumDs - (jL.Count * D - sumDl);
+                    int    bound1     = countLarge + (int)Math.Ceiling(Math.Max(0, numerator1) / D);
 
-                double numerator1 = sumDs - (jL.Count * D - sumDl);
-                int    bound1     = countLarge + (int)Math.Ceiling(Math.Max(0, numerator1) / D);
+                    double floorDP    = Math.Floor(D / p);
+                    double sumFloors  = jL.Sum(b => Math.Floor((D - getDim3(b.BoxDefinition)) / p));
+                    double numerator2 = jS.Count - sumFloors;
+                    int    bound2     = countLarge + (int)Math.Ceiling(Math.Max(0, numerator2) / floorDP);
 
-                double floorDP    = Math.Floor(D / p);
-                double sumFloors  = jL.Sum(b => Math.Floor((D - getDim3(b.BoxDefinition)) / p));
-                double numerator2 = jS.Count - sumFloors;
-                int    bound2     = countLarge + (int)Math.Ceiling(Math.Max(0, numerator2) / floorDP);
-
-                best = Math.Max(best, Math.Max(bound1, bound2));
+                    best = Math.Max(best, Math.Max(bound1, bound2));
+                }
             }
 
             return best;
@@ -184,18 +185,19 @@ public static int ComputeL2(
                                getDim1(box) >= p && getDim2(box) >= q;
                     }).ToList();
 
-                    if (ks.Count == 0 && kl.Count == 0) continue;
+                    if (ks.Count > 0 || kl.Count > 0)
+                    {
+                        double sumKvDepth = kv.Sum(b => getDim3(b.BoxDefinition));
+                        double sumKlKsVol = kl.Sum(b => b.BoxDefinition.Volume)
+                                          + ks.Sum(b => b.BoxDefinition.Volume);
 
-                    double sumKvDepth = kv.Sum(b => getDim3(b.BoxDefinition));
-                    double sumKlKsVol = kl.Sum(b => b.BoxDefinition.Volume)
-                                      + ks.Sum(b => b.BoxDefinition.Volume);
+                        double availableVolume = binVolume * l1Base - W * H * sumKvDepth;
+                        double numerator = sumKlKsVol - availableVolume;
+                        int extraBins = (int)Math.Ceiling(Math.Max(0, numerator) / binVolume);
 
-                    double availableVolume = binVolume * l1Base - W * H * sumKvDepth;
-                    double numerator = sumKlKsVol - availableVolume;
-                    int extraBins = (int)Math.Ceiling(Math.Max(0, numerator) / binVolume);
-
-                    int bound = l1Base + extraBins;
-                    if (bound > best) best = bound;
+                        int bound = l1Base + extraBins;
+                        if (bound > best) best = bound;
+                    }
                 }
             }
 

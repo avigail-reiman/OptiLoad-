@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using OptiLoad.Core.Algorithms;
 using OptiLoad.Core.Models;
 
 namespace OptiLoad.Core.Application.Algorithms;
@@ -9,7 +10,6 @@ public enum LoadingFace { Front, Back, Left, Right }
 
 public static class LoadingSequencer
 {
-    private const double Eps      = 1e-6;
     private const double TouchEps = 0.5;
 
     public static IReadOnlyList<(PlacedBox Box, int LoadingStep)> Sequence(
@@ -28,25 +28,29 @@ public static class LoadingSequencer
         for (int a = 0; a < n; a++)
         for (int b = 0; b < n; b++)
         {
-            if (a == b) continue;
-            if (boxes[a].BinIndex != boxes[b].BinIndex) continue;
-            if (IsBelow(boxes[a], boxes[b])) supportEdges.Add((a, b));
+            if (a != b && boxes[a].BinIndex == boxes[b].BinIndex)
+            {
+                if (IsBelow(boxes[a], boxes[b])) supportEdges.Add((a, b));
+            }
         }
 
         for (int a = 0; a < n; a++)
         for (int b = 0; b < n; b++)
         {
-            if (a == b) continue;
-            var A = boxes[a]; var B = boxes[b];
-            if (A.BinIndex != B.BinIndex) continue;
-
-            bool addEdge = supportEdges.Contains((a, b))
-                        || (IsBlocking(A, B, face) && !supportEdges.Contains((b, a)));
-
-            if (addEdge)
+            if (a != b)
             {
-                adjList[a].Add(b);
-                inDegree[b]++;
+                var A = boxes[a]; var B = boxes[b];
+                if (A.BinIndex == B.BinIndex)
+                {
+                    bool addEdge = supportEdges.Contains((a, b))
+                                || (IsBlocking(A, B, face) && !supportEdges.Contains((b, a)));
+
+                    if (addEdge)
+                    {
+                        adjList[a].Add(b);
+                        inDegree[b]++;
+                    }
+                }
             }
         }
 
@@ -103,20 +107,20 @@ public static class LoadingSequencer
     {
         bool aIsDeeper = face switch
         {
-            LoadingFace.Front => a.Z1 > b.Z1 + Eps,
-            LoadingFace.Back  => a.Z1 < b.Z1 - Eps,
-            LoadingFace.Left  => a.X1 > b.X1 + Eps,
-            LoadingFace.Right => a.X1 < b.X1 - Eps,
-            _                 => a.Z1 > b.Z1 + Eps
+            LoadingFace.Front => a.Z1 > b.Z1 + AlgorithmConfig.LayerEpsilon,
+            LoadingFace.Back  => a.Z1 < b.Z1 - AlgorithmConfig.LayerEpsilon,
+            LoadingFace.Left  => a.X1 > b.X1 + AlgorithmConfig.LayerEpsilon,
+            LoadingFace.Right => a.X1 < b.X1 - AlgorithmConfig.LayerEpsilon,
+            _                 => a.Z1 > b.Z1 + AlgorithmConfig.LayerEpsilon
         };
 
         bool overlapDepthAxis, overlapY;
-        overlapY = a.Y1 < b.Y2 - Eps && b.Y1 < a.Y2 - Eps;
+        overlapY = a.Y1 < b.Y2 - AlgorithmConfig.LayerEpsilon && b.Y1 < a.Y2 - AlgorithmConfig.LayerEpsilon;
 
         if (face == LoadingFace.Front || face == LoadingFace.Back)
-            overlapDepthAxis = a.X1 < b.X2 - Eps && b.X1 < a.X2 - Eps;
+            overlapDepthAxis = a.X1 < b.X2 - AlgorithmConfig.LayerEpsilon && b.X1 < a.X2 - AlgorithmConfig.LayerEpsilon;
         else
-            overlapDepthAxis = a.Z1 < b.Z2 - Eps && b.Z1 < a.Z2 - Eps;
+            overlapDepthAxis = a.Z1 < b.Z2 - AlgorithmConfig.LayerEpsilon && b.Z1 < a.Z2 - AlgorithmConfig.LayerEpsilon;
 
         return aIsDeeper && overlapDepthAxis && overlapY;
     }
@@ -124,9 +128,10 @@ public static class LoadingSequencer
     private static bool IsBelow(PlacedBox a, PlacedBox b)
     {
         bool topTouchesBase = Math.Abs(a.Y2 - b.Y1) < TouchEps;
-        bool overlapX = a.X1 < b.X2 - Eps && b.X1 < a.X2 - Eps;
-        bool overlapZ = a.Z1 < b.Z2 - Eps && b.Z1 < a.Z2 - Eps;
+        bool overlapX = a.X1 < b.X2 - AlgorithmConfig.LayerEpsilon && b.X1 < a.X2 - AlgorithmConfig.LayerEpsilon;
+        bool overlapZ = a.Z1 < b.Z2 - AlgorithmConfig.LayerEpsilon && b.Z1 < a.Z2 - AlgorithmConfig.LayerEpsilon;
         return topTouchesBase && overlapX && overlapZ;
     }
 }
+
 

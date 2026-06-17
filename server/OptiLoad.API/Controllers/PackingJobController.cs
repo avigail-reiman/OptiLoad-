@@ -17,7 +17,7 @@ namespace OptiLoad.API.Controllers
 
         public PackingJobController(DatabaseService db, PackingService packingService)
         {
-            _db             = db;
+            _db = db;
             _packingService = packingService;
         }
 
@@ -80,7 +80,7 @@ namespace OptiLoad.API.Controllers
         }
 
         // ⚠️ DEAD CODE — endpoint זה (POST /api/packing/demo) לא נקרא מאף דף client
-                        [HttpPost("demo")]
+        [HttpPost("demo")]
         public ActionResult<PackingResult> RunDemo()
         {
             var container = new ContainerDimensions
@@ -140,7 +140,6 @@ namespace OptiLoad.API.Controllers
         public int                    ContainerId { get; set; }
         public List<BoxQuantityItem>  Boxes       { get; set; } = new();
     }
-
     public class BoxQuantityItem
     {
         public int BoxId    { get; set; }

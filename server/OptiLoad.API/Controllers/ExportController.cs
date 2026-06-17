@@ -26,20 +26,7 @@ public class ExportController : ControllerBase
     private int GetCurrentAdminId() =>
         int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    /// <summary>
-    /// Exports the loading sequence table and snapshots for a packing job as a single JSON file.
-    /// Intended for external systems (e.g. Arduino / Node.js / React + SQL).
-    ///
-    /// GET /api/export/{jobId}
-    /// GET /api/export/{jobId}?face=Front   (Front | Back | Left | Right)
-    ///
-    /// Response structure:
-    /// {
-    ///   jobId, exportedAt, loadingFace, totalBoxes,
-    ///   loadingSequence: [{ loadingStep, boxName, x, y, z, width, height, depth, binIndex, isFragile }],
-    ///   snapshots:       [{ loadingStep, boxName, imageData }]   // imageData = base64 JPEG
-    /// }
-    /// </summary>
+    
     [HttpGet("{jobId:int}")]
     public async Task<IActionResult> ExportJob(int jobId, [FromQuery] string face = "Front")
     {
@@ -154,8 +141,6 @@ public class ExportController : ControllerBase
         );
     }
 
-    // ─── private helpers ────────────────────────────────────────────────────
-
     private static PlacedBox ToPlacedBox(PlacementResult pr)
     {
         var box      = new Box { BoxId = pr.BoxId, BoxName = pr.BoxName };
@@ -165,7 +150,6 @@ public class ExportController : ControllerBase
         return new PlacedBox(instance, position, rotation) { BinIndex = pr.BinIndex };
     }
 
-    // Position key used to match a PlacedBox back to its PlacementResult
     private static string PosKey(PlacedBox b)       => $"{b.X1:F4}|{b.Y1:F4}|{b.Z1:F4}|{b.BinIndex}";
     private static string PosKey(PlacementResult pr) => $"{pr.PosX:F4}|{pr.PosY:F4}|{pr.PosZ:F4}|{pr.BinIndex}";
 }

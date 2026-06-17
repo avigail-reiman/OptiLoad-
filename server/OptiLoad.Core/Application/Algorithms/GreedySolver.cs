@@ -8,14 +8,13 @@ namespace OptiLoad.Core.Algorithms
 
     public static class GreedySolver
     {
-        private const double Epsilon = 1e-9;
         //פונקציה שמכניסה בצורה חמדנית את כל הארגזים שהאלגוריתם B&B לא טיפל בהם. 
         //מקבלת את רשימת הארגזים, רשימת המכולות הפתוחות, סוג המכולה, וכן את הגובה המקסימלי המותר לארוז בתוכה
         public static List<BoxInstance> FillRemaining(
             List<BoxInstance>   remainingBoxes,
             List<PackingState>  openBins,
             ContainerDimensions container,
-            double maxFillHeightRatio = 1.0)
+            double maxFillHeightRatio = AlgorithmConfig.DefaultMaxFillHeightRatio)
         {
             var unplaced = new List<BoxInstance>();//יוצר רשימה חדשה וריקה לארגזים שלא שובצו
 
@@ -36,7 +35,7 @@ namespace OptiLoad.Core.Algorithms
                     }
                 }
 
-if (!placed)//אם לא הצליח לשבץ את הארגז באף אחת מהמכולות הפתוחות, לנסות לפתוח מכולה חדשה רק בשבילו
+                if (!placed)//אם לא הצליח לשבץ את הארגז באף אחת מהמכולות הפתוחות, לנסות לפתוח מכולה חדשה רק בשבילו
                 {
                     var newBin = new PackingState();//פותח מכולה חדשה ריקה
                     if (TryPlaceGreedy(instance, newBin, container, maxFillHeightRatio))//אם מצליח להכניס את הארגז למכולה חדשה
@@ -46,11 +45,11 @@ if (!placed)//אם לא הצליח לשבץ את הארגז באף אחת מהמ
                     }
                 }
 
-if (!placed)//אם לא הצליח לשבץ את הארגז באף מכולה, גם לא במכולה חדשה, מוסיף אותו לרשימת הארגזים שלא שובצו
+                if (!placed)
                     unplaced.Add(instance);
             }
 
-            return unplaced;//מחזיר את רשימת הארגזים שלא שובצו
+            return unplaced;
         }
 
 //פונקציה שמנסה להכניס ארגז מסוים לתוך מכולה מסוימת
@@ -97,13 +96,13 @@ private static bool IsValidPlacement(
         {
             double maxHeight = container.Height * maxFillHeightRatio;
 
-            if (corner.X + rotation.W > container.Width  + Epsilon ||
-                corner.Y + rotation.H > maxHeight + Epsilon ||
-                corner.Z + rotation.D > container.Depth  + Epsilon)
+            if (corner.X + rotation.W > container.Width  + AlgorithmConfig.Epsilon ||
+                corner.Y + rotation.H > maxHeight + AlgorithmConfig.Epsilon ||
+                corner.Z + rotation.D > container.Depth  + AlgorithmConfig.Epsilon)
                 return false;
 
             if (bin.UsedWeightKg + instance.BoxDefinition.WeightKg >
-                container.MaxWeightKg + Epsilon)
+                container.MaxWeightKg + AlgorithmConfig.Epsilon)
                 return false;
 
             var candidate = new PlacedBox(instance, corner, rotation);
@@ -116,14 +115,16 @@ private static bool IsValidPlacement(
             // אין להניח ארגז על גבי ארגז שביר
             foreach (var existing in bin.PlacedBoxes)
             {
-                if (!existing.Instance.BoxDefinition.IsFragile) continue;
-                if (Math.Abs(corner.Y - existing.Y2) < Epsilon)
+                if (existing.Instance.BoxDefinition.IsFragile)
                 {
-                    bool overlapX = corner.X < existing.X2 - Epsilon &&
-                                    corner.X + rotation.W > existing.X1 + Epsilon;
-                    bool overlapZ = corner.Z < existing.Z2 - Epsilon &&
-                                    corner.Z + rotation.D > existing.Z1 + Epsilon;
-                    if (overlapX && overlapZ) return false;
+                    if (Math.Abs(corner.Y - existing.Y2) < AlgorithmConfig.Epsilon)
+                    {
+                        bool overlapX = corner.X < existing.X2 - AlgorithmConfig.Epsilon &&
+                                        corner.X + rotation.W > existing.X1 + AlgorithmConfig.Epsilon;
+                        bool overlapZ = corner.Z < existing.Z2 - AlgorithmConfig.Epsilon &&
+                                        corner.Z + rotation.D > existing.Z1 + AlgorithmConfig.Epsilon;
+                        if (overlapX && overlapZ) return false;
+                    }
                 }
             }
             if (isFragile)
@@ -134,20 +135,19 @@ private static bool IsValidPlacement(
 
                 foreach (var existing in bin.PlacedBoxes)
                 {
-                    if (existing.Instance.BoxDefinition.IsFragile) continue;
-
-                    if (existing.Y1 < candY2 - Epsilon &&
-                        existing.Y2 > candY1 + Epsilon &&
-                        existing.Y1 >= candY1 - Epsilon)
+                    if (!existing.Instance.BoxDefinition.IsFragile)
                     {
-                        bool overlapX = existing.X1 < candX2 - Epsilon &&
-                                        existing.X2 > candX1 + Epsilon;
-                        if (!overlapX) continue;
-
-                        bool overlapZ = existing.Z1 < candZ2 - Epsilon &&
-                                        existing.Z2 > candZ1 + Epsilon;
-
-                        if (overlapZ) return false;
+                        if (existing.Y1 < candY2 - AlgorithmConfig.Epsilon &&
+                            existing.Y2 > candY1 + AlgorithmConfig.Epsilon &&
+                            existing.Y1 >= candY1 - AlgorithmConfig.Epsilon)
+                        {
+                            bool overlapX = existing.X1 < candX2 - AlgorithmConfig.Epsilon &&
+                                            existing.X2 > candX1 + AlgorithmConfig.Epsilon;
+                            bool overlapZ = overlapX &&
+                                            existing.Z1 < candZ2 - AlgorithmConfig.Epsilon &&
+                                            existing.Z2 > candZ1 + AlgorithmConfig.Epsilon;
+                            if (overlapZ) return false;
+                        }
                     }
                 }
             }
@@ -156,3 +156,4 @@ private static bool IsValidPlacement(
         }
     }
 }
+

@@ -72,11 +72,13 @@ namespace OptiLoad.Core.Algorithms
                     .OrderByDescending(r => r.bd)
                     .ToList();
                 //אם לא נמצא סיבוב מתאים מדלגים על הארגז
-                if (candidates.Count == 0) continue; 
-                //בחירת הסיבוב הראשון - העמוק ביותר
-                var best = candidates.First();
-                //הוספת הארגז עם הסיבוב הטוב ביותר לרשימת הארגזים עם סיבובים
-                withRotations.Add((inst, best.bd, best.bw, best.bh));
+                if (candidates.Count > 0)
+                {
+                    //בחירת הסיבוב הראשון - העמוק ביותר
+                    var best = candidates.First();
+                    //הוספת הארגז עם הסיבוב הטוב ביותר לרשימת הארגזים עם סיבובים
+                    withRotations.Add((inst, best.bd, best.bw, best.bh));
+                }
             }
             //ממיין לפי עומק
             withRotations = withRotations.OrderByDescending(b => b.bd).ToList();

@@ -85,7 +85,7 @@ public class VisualizationController : ControllerBase
     public async Task<ContentResult> RunAndVisualize()
     {
 
-var boxDefs = new[]
+        var boxDefs = new[]
         {
             
             ("PALLET-LG",    120.0, 144.0,  80.0, 500.0, false, false,  2),  
@@ -100,7 +100,7 @@ var boxDefs = new[]
             ("GLASS-PANEL",  180.0,  10.0, 120.0,  30.0, true,  false,  1),  
         };
 
-var boxIds = new List<(int id, int qty)>();
+        var boxIds = new List<(int id, int qty)>();
         foreach (var (name, w, h, d, kg, fragile, rot, qty) in boxDefs)
         {
             int bid = await _db.CreateBox(new Box
@@ -115,13 +115,13 @@ var boxIds = new List<(int id, int qty)>();
             boxIds.Add((bid, qty));
         }
 
-int containerId = await _db.CreateContainer(1, $"VIS-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}");
+        int containerId = await _db.CreateContainer(1, $"VIS-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}");
 
-int jobId = await _db.CreatePackingJob(containerId, GetCurrentAdminId());
+        int jobId = await _db.CreatePackingJob(containerId, GetCurrentAdminId());
         foreach (var (bid, qty) in boxIds)
             await _db.AddBoxToJob(jobId, bid, qty);
 
-var result = await _packing.RunPackingJobWithTimeLimit(jobId, 8.0);
+        var result = await _packing.RunPackingJobWithTimeLimit(jobId, 8.0);
 
 return await ViewJobFromDb(jobId);
     }
@@ -303,7 +303,7 @@ var json = JsonSerializer.Serialize(new
         _cache.Set(cacheKey, response, TimeSpan.FromMinutes(30));
         return Ok(response);
     }
-//מחשה אחוזי נפח מנוצל ושנפח שלא נוצל לכל מכולה
+//מחשב אחוזי נפח מנוצל ושנפח שלא נוצל לכל מכולה
 private static object BuildPerBinStatsFromPlacements(
         IEnumerable<PlacementResult> placements, int binsUsed, double utilization)
     {

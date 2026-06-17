@@ -8,11 +8,7 @@ namespace OptiLoad.Core.Algorithms
 
     public class SingleBinFiller
     {
-        
-        private const int MaxNodes = 10_000_000;  
-        private const double Epsilon  = 1e-9;    
-
-        public double MaxFillHeightRatio { get; set; } = 1.0;
+        public double MaxFillHeightRatio { get; set; } = AlgorithmConfig.DefaultMaxFillHeightRatio;
 
 private readonly ContainerDimensions _container;
         private int _nodeCount;
@@ -50,7 +46,7 @@ var stateAfterPhase1 = FillBin(all, fragilePhase: false);
 
             var nonFragile = all.Where(b => !b.BoxDefinition.IsFragile).ToList();
             double requiredNonFragile = nonFragile.Sum(b => b.BoxDefinition.Volume);
-            if (stateAfterPhase1.UsedVolume < requiredNonFragile - Epsilon)
+            if (stateAfterPhase1.UsedVolume < requiredNonFragile - AlgorithmConfig.Epsilon)
                 return false;  
 
 var stateAfterPhase2 = FillBin(all, fragilePhase: true,
@@ -61,7 +57,7 @@ var stateAfterPhase2 = FillBin(all, fragilePhase: true,
             double addedFragileVol  = stateAfterPhase2.UsedVolume
                                     - stateAfterPhase1.UsedVolume;
 
-            return addedFragileVol >= requiredFragile - Epsilon;
+            return addedFragileVol >= requiredFragile - AlgorithmConfig.Epsilon;
         }
         // ⚠️ END DEAD CODE
 
@@ -72,7 +68,7 @@ private void SearchRecursive(
             bool              fragilePhase)
         {
             _nodeCount++;
-            if (_nodeCount > MaxNodes) return;
+            if (_nodeCount > AlgorithmConfig.SingleBinMaxNodes) return;
 
 if (current.UsedVolume > best.UsedVolume)
                 best = current.Clone();
@@ -81,7 +77,7 @@ var remaining = GetRemainingBoxes(allBoxes, current);
             double upperBound = current.UsedVolume +
                                 remaining.Sum(b => b.BoxDefinition.Volume);
 
-if (upperBound <= best.UsedVolume + Epsilon) return;
+if (upperBound <= best.UsedVolume + AlgorithmConfig.Epsilon) return;
 
 var corners = CornerPointsFinder.Find3DCorners(
                 current.PlacedBoxes,
@@ -90,24 +86,31 @@ var corners = CornerPointsFinder.Find3DCorners(
 
             if (corners.Count == 0) return;
 
-foreach (var instance in remaining)
-            {
-                foreach (var rotation in instance.BoxDefinition.GetAllowedRotations())
-                {
-                    foreach (var corner in corners)
-                    {
-                        if (_nodeCount > MaxNodes) return;
+            if (remaining.Count > 0)
+                TryAllOrientationsInSearch(remaining[0], corners, current, allBoxes, ref best, fragilePhase);
+        }
 
-                        if (TryPlace(current, instance, corner, rotation,
-                                     fragilePhase, out var placed))
-                        {
-                            current.AddBox(placed!);
-                            SearchRecursive(allBoxes, current, ref best, fragilePhase);
-                            current.RemoveLastBox();
-                        }
+        //עובר על כל הסיבובים וכל נקודות הפינה לארגז נתון במסגרת הביקוש הרקורסיבי
+        private void TryAllOrientationsInSearch(
+            BoxInstance       instance,
+            List<Position3D>  corners,
+            PackingState      current,
+            List<BoxInstance> allBoxes,
+            ref PackingState  best,
+            bool              fragilePhase)
+        {
+            foreach (var rotation in instance.BoxDefinition.GetAllowedRotations())
+            {
+                foreach (var corner in corners)
+                {
+                    if (_nodeCount > AlgorithmConfig.SingleBinMaxNodes) return;
+                    if (TryPlace(current, instance, corner, rotation, fragilePhase, out var placed))
+                    {
+                        current.AddBox(placed!);
+                        SearchRecursive(allBoxes, current, ref best, fragilePhase);
+                        current.RemoveLastBox();
                     }
                 }
-                break; 
             }
         }
 
@@ -131,13 +134,13 @@ public bool TryPlaceBox(
             placed = null;
 
 double maxAllowedHeight = _container.Height * MaxFillHeightRatio;
-            if (corner.X + rotation.W > _container.Width  + Epsilon ||
-                corner.Y + rotation.H > maxAllowedHeight  + Epsilon ||
-                corner.Z + rotation.D > _container.Depth  + Epsilon)
+            if (corner.X + rotation.W > _container.Width  + AlgorithmConfig.Epsilon ||
+                corner.Y + rotation.H > maxAllowedHeight  + AlgorithmConfig.Epsilon ||
+                corner.Z + rotation.D > _container.Depth  + AlgorithmConfig.Epsilon)
                 return false;
 
 if (state.UsedWeightKg + instance.BoxDefinition.WeightKg >
-                _container.MaxWeightKg + Epsilon)
+                _container.MaxWeightKg + AlgorithmConfig.Epsilon)
                 return false;
 
             var candidate = new PlacedBox(instance, corner, rotation);
@@ -150,14 +153,16 @@ foreach (var existing in state.PlacedBoxes)
             // אין להניח ארגז על גבי ארגז שביר
             foreach (var existing in state.PlacedBoxes)
             {
-                if (!existing.Instance.BoxDefinition.IsFragile) continue;
-                if (Math.Abs(corner.Y - existing.Y2) < Epsilon)
+                if (existing.Instance.BoxDefinition.IsFragile)
                 {
-                    bool overlapX = corner.X < existing.X2 - Epsilon &&
-                                    corner.X + rotation.W > existing.X1 + Epsilon;
-                    bool overlapZ = corner.Z < existing.Z2 - Epsilon &&
-                                    corner.Z + rotation.D > existing.Z1 + Epsilon;
-                    if (overlapX && overlapZ) return false;
+                    if (Math.Abs(corner.Y - existing.Y2) < AlgorithmConfig.Epsilon)
+                    {
+                        bool overlapX = corner.X < existing.X2 - AlgorithmConfig.Epsilon &&
+                                        corner.X + rotation.W > existing.X1 + AlgorithmConfig.Epsilon;
+                        bool overlapZ = corner.Z < existing.Z2 - AlgorithmConfig.Epsilon &&
+                                        corner.Z + rotation.D > existing.Z1 + AlgorithmConfig.Epsilon;
+                        if (overlapX && overlapZ) return false;
+                    }
                 }
             }
 if (fragilePhase)
@@ -168,22 +173,20 @@ if (fragilePhase)
 
                 foreach (var existing in state.PlacedBoxes)
                 {
-                    if (existing.Instance.BoxDefinition.IsFragile) continue;
-
-if (existing.Y1 < candY2 - Epsilon &&
-                        existing.Y2 > candY1 + Epsilon &&
-                        existing.Y1 >= candY1 - Epsilon)
+                    if (!existing.Instance.BoxDefinition.IsFragile)
                     {
-                        
-                        bool overlapX = existing.X1 < candX2 - Epsilon &&
-                                        existing.X2 > candX1 + Epsilon;
-                        if (!overlapX) continue;
-
-bool overlapZ = existing.Z1 < candZ2 - Epsilon &&
-                                        existing.Z2 > candZ1 + Epsilon;
-
-                        if (overlapZ)
-                            return false;
+                        if (existing.Y1 < candY2 - AlgorithmConfig.Epsilon &&
+                            existing.Y2 > candY1 + AlgorithmConfig.Epsilon &&
+                            existing.Y1 >= candY1 - AlgorithmConfig.Epsilon)
+                        {
+                            bool overlapX = existing.X1 < candX2 - AlgorithmConfig.Epsilon &&
+                                            existing.X2 > candX1 + AlgorithmConfig.Epsilon;
+                            bool overlapZ = overlapX &&
+                                            existing.Z1 < candZ2 - AlgorithmConfig.Epsilon &&
+                                            existing.Z2 > candZ1 + AlgorithmConfig.Epsilon;
+                            if (overlapZ)
+                                return false;
+                        }
                     }
                 }
             }
@@ -206,3 +209,4 @@ private static List<BoxInstance> GetRemainingBoxes(
         }
     }
 }
+
