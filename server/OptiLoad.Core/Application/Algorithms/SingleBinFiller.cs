@@ -9,7 +9,7 @@ namespace OptiLoad.Core.Algorithms
     public class SingleBinFiller
     {
         
-        private const int    MaxNodes = 10_000_000;  
+        private const int MaxNodes = 10_000_000;  
         private const double Epsilon  = 1e-9;    
 
         public double MaxFillHeightRatio { get; set; } = 1.0;
@@ -41,6 +41,7 @@ var currentState = existingState?.Clone() ?? new PackingState();
             return bestState;
         }
 
+        // ⚠️ DEAD CODE — פונקציה זו לא נקראת מאף מקום בקוד
         public bool CanFitAll(IEnumerable<BoxInstance> instances)
         {
             var all = instances.ToList();
@@ -62,6 +63,7 @@ var stateAfterPhase2 = FillBin(all, fragilePhase: true,
 
             return addedFragileVol >= requiredFragile - Epsilon;
         }
+        // ⚠️ END DEAD CODE
 
 private void SearchRecursive(
             List<BoxInstance> allBoxes,
@@ -145,7 +147,19 @@ foreach (var existing in state.PlacedBoxes)
                 if (candidate.OverlapsWith(existing))
                     return false;
             }
-
+            // אין להניח ארגז על גבי ארגז שביר
+            foreach (var existing in state.PlacedBoxes)
+            {
+                if (!existing.Instance.BoxDefinition.IsFragile) continue;
+                if (Math.Abs(corner.Y - existing.Y2) < Epsilon)
+                {
+                    bool overlapX = corner.X < existing.X2 - Epsilon &&
+                                    corner.X + rotation.W > existing.X1 + Epsilon;
+                    bool overlapZ = corner.Z < existing.Z2 - Epsilon &&
+                                    corner.Z + rotation.D > existing.Z1 + Epsilon;
+                    if (overlapX && overlapZ) return false;
+                }
+            }
 if (fragilePhase)
             {
                 double candX1 = corner.X,         candX2 = corner.X + rotation.W;

@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>תרשים זרימה — הרצת שיבוץ</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #0d1117;
+    color: #c9d1d9;
+    padding: 32px;
+    line-height: 1.7;
+  }
+  h1 {
+    font-size: 2rem;
+    color: #58a6ff;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  h2 {
+    font-size: 1.3rem;
+    color: #79c0ff;
+    margin: 32px 0 8px;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 6px;
+  }
+  h3 {
+    font-size: 1.05rem;
+    color: #d2a8ff;
+    margin: 20px 0 6px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #8b949e;
+    margin-bottom: 40px;
+    font-size: 1rem;
+  }
+  .diagram-container {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 40px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .step {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 20px 24px;
+    border-right: 4px solid #58a6ff;
+  }
+  .step.green  { border-right-color: #3fb950; }
+  .step.purple { border-right-color: #d2a8ff; }
+  .step.orange { border-right-color: #d29922; }
+  .step.red    { border-right-color: #da3633; }
+  .step.blue   { border-right-color: #58a6ff; }
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .step-num {
+    background: #238636;
+    color: #fff;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+  .step-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #e6edf3;
+  }
+  .file-badge {
+    display: inline-block;
+    background: #1f2937;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 2px 10px;
+    font-size: 0.78rem;
+    color: #79c0ff;
+    font-family: monospace;
+    margin: 4px 4px 0 0;
+  }
+  .io-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .io-box {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.88rem;
+  }
+  .io-box .label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+  .io-box.input .label  { color: #3fb950; }
+  .io-box.output .label { color: #f78166; }
+  .io-box ul { padding-right: 18px; }
+  .io-box li { margin-bottom: 3px; }
+  .desc {
+    font-size: 0.9rem;
+    color: #8b949e;
+    margin-top: 8px;
+  }
+  code {
+    background: #1f2937;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.85rem;
+    color: #79c0ff;
+    font-family: monospace;
+  }
+  .note {
+    background: #1c2128;
+    border-right: 3px solid #d29922;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-top: 10px;
+    font-size: 0.87rem;
+    color: #e3b341;
+  }
+  .verbal {
+    background: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-top: 14px;
+    font-size: 0.9rem;
+    color: #c9d1d9;
+    line-height: 1.85;
+  }
+  .verbal-title {
+    color: #58a6ff;
+    font-weight: bold;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+  .verbal ol { padding-right: 20px; }
+  .verbal ol li { margin-bottom: 5px; }
+</style>
+</head>
+<body>
+
+<h1>🔄 תרשים זרימה — הרצת שיבוץ</h1>
+<p class="subtitle">מלחיצה על "הרץ" ועד לתצוגת התוצאה בדפדפן</p>
+
+<!-- תרשים Mermaid -->
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart TD
+    A["👆 לחיצה על 'הרץ מידית'"] --> B
+    B["📦 בניית payload\nמכולה + ארגזים + זמן + כיוון"] --> C
+    C["🌐 POST /api/visualization/run\n+ JWT בheader"] --> D
+    D{"🔐 בדיקת JWT"} -->|"לא תקף"| E["❌ 401 → חזרה ל-login"]
+    D -->|"תקף"| F["💾 שמירה ל-DB\n(ארגזים, מכולה, job)"]
+    F --> G["⚙️ PackingService\nRunPackingJobWithTimeLimit"]
+    G --> H
+
+    subgraph ALG ["🧠 BranchAndBoundSolver"]
+        H["HeuristicH1\nפתרון התחלתי"] --> I
+        I["BranchMain — ארגזים רגילים\nB&B + backtrack + גיזום"] --> J
+        J["BranchMain — ארגזים שבירים\nאותו תהליך"] --> K
+        K["Filler + Repack\nמילוי חורים והזזת ארגזים"] --> L
+        L["GravitySettler\nהצמדה לרצפה"]
+    end
+
+    L --> M["💾 SavePlacementResults\nשמירה ל-DB"]
+    M --> N["🔢 LoadingSequencer\nמיון לפי סדר טעינה"]
+    N --> O["📤 JSON Response\nחוזר לדפדפן"]
+    O --> P["🎨 Three.js\nציור 3D בדפדפן"]
+    P --> Q["✅ תצוגה מוכנה"]
+
+    style A fill:#238636,color:#fff
+    style E fill:#da3633,color:#fff
+    style Q fill:#238636,color:#fff
+    style ALG fill:#0d1117,stroke:#58a6ff
+  </div>
+</div>
+
+<!-- הסברים מפורטים -->
+<h2>📋 הסבר מפורט על כל שלב</h2>
+<div class="steps">
+
+  <!-- שלב 1 -->
+  <div class="step green">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">לחיצה על "הרץ מידית" — Client</div>
+    </div>
+    <span class="file-badge">client/pages/01_main-packing-interface.html</span>
+    <div class="io-grid">
+      <div class="io-box input">
+        <div class="label">📥 קלט</div>
+        <ul>
+          <li>שדות הטופס: מידות מכולה</li>
+          <li>טבלת ארגזים: שם, מידות, משקל, כמות, שביר/לא</li>
+          <li>שדה מגבלת זמן (שניות)</li>
+          <li>בחירת כיוון טעינה (Front/Back/Left/Right)</li>
+        </ul>
+      </div>
+      <div class="io-box output">
+        <div class="label">📤 פלט</div>
+        <ul>
+          <li>אובייקט JSON מוכן לשליחה</li>
+          <li>header עם JWT</li>
+          <li>בקשת POST לשרת</li>
+        </ul>
+      </div>
+    </div>
+    <p class="desc">
+      הפונקציה <code>runPacking('instant')</code> אוספת את כל הערכים מהטופס,
+      בונה את ה-<code>payload</code>, ומצרפת <code>getAuthHeaders()</code>
+      שמוסיף את ה-JWT מה-<code>sessionStorage</code>.
+    </p>
+    <div class="verbal">
+      <div class="verbal-title">📖 הסבר מילולי</div>
+      <ol>
+        <li>המשתמש לוחץ על כפתור "הרץ מידית" בממשק הגרפי.</li>
+        <li>הקוד ב-JavaScript קורא את כל הערכים שהמשתמש הזין: מידות המכולה (רוחב, גובה, עומק, משקל מקסימלי), רשימת הארגזים עם כל מאפייניהם, מגבלת הזמן בשניות, וכיוון הטעינה.</li>
+        <li>כל הנתונים מאורגנים לאובייקט JSON אחד — ה-payload.</li>
+        <li>הקוד מוסיף את ה-JWT (טוקן הזיהוי) ל-header של הבקשה, כדי שהשרת ידע מי שולח את הבקשה.</li>
+        <li>הבקשה נשלחת לשרת דרך רשת.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- שלב 2 -->
+  <div class="step red">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">בדיקת JWT — Middleware</div>
+    </div>
+    <span class="file-badge">server/OptiLoad.API/Program.cs</span>
+    <div class="io-grid">
+      <div class="io-box input">
+        <div class="label">📥 קלט</div>
+        <ul>
+          <li>Header: <code>Authorization: Bearer &lt;token&gt;</code></li>
+        </ul>
+      </div>
+      <div class="io-box output">
+        <div class="label">📤 פלט</div>
+        <ul>
+          <li>אם תקף: <code>HttpContext.User</code> מלא</li>
+          <li>אם לא תקף: 401 Unauthorized</li>
+        </ul>
+      </div>
+    </div>
+    <p class="desc">
+      <code>app.UseAuthentication()</code> בודק את חתימת הטוקן עם המפתח הסודי
+      מ-<code>appsettings.json</code>. אם הטוקן פג תוקף או מזויף — הבקשה נחסמת
+      לפני שמגיעה לשום קוד.
+    </p>
+    <div class="verbal">
+      <div class="verbal-title">📖 הסבר מילולי</div>
+      <ol>
+        <li>הבקשה מגיעה לשרת. לפני שנגעת בשום קוד עסקי, ה-Middleware יורט אותה.</li>
+        <li>הוא מחפש ב-headers את שורת ה-Authorization שאמורה להכיל "Bearer" ואחריו הטוקן.</li>
+        <li>אם אין טוקן כלל — הבקשה נדחית מיידית עם שגיאה 401.</li>
+        <li>אם יש טוקן, הוא מפענח אותו ובודק את החתימה הדיגיטלית מול המפתח הסודי שמוגדר בשרת. אם מישהו שינה את הטוקן — החתימה לא תתאים והבקשה תידחה.</li>
+        <li>הוא בודק שהטוקן לא פג תוקף (תוקפו שעתיים מרגע ההתחברות).</li>
+        <li>אם הכל תקין — הזהות של המשתמש זמינה לכל הקוד בבקשה הנוכחית.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- שלב 3 -->
+  <div class="step blue">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div class="step-title">שמירה ל-DB — VisualizationController</div>
+    </div>
+    <span class="file-badge">server/OptiLoad.API/Controllers/VisualizationController.cs</span>
+    <span class="file-badge">server/OptiLoad.Data/DatabaseService.cs</span>
+    <div class="io-grid">
+      <div class="io-box input">
+        <div class="label">📥 קלט</div>
+        <ul>
+          <li>VisualizationRunRequest (מה-client)</li>
+          <li>מזהה המנהל מה-JWT</li>
+        </ul>
+      </div>
+      <div class="io-box output">
+        <div class="label">📤 פלט</div>
+        <ul>
+          <li><code>jobId</code> — מזהה העבודה ב-DB</li>
+          <li>כל הנתונים שמורים ב-DB</li>
+        </ul>
+      </div>
+    </div>
+    <p class="desc">
+      יוצר רשומות ב-DB: <code>UpsertBox</code> לכל ארגז,
+      <code>UpsertContainerTemplate</code>, <code>CreateContainer</code>,
+      <code>CreatePackingJob</code>, <code>AddBoxToJob</code>.
+      גם בודק cache — אם אותו payload כבר רץ לאחרונה, מחזיר תשובה מיידית.
+    </p>
+    <div class="note">⚠️ כל שאילתה משתמשת ב-Parameterized Queries (@Param) להגנה מ-SQL Injection.</div>
+    <div class="verbal">
+      <div class="verbal-title">📖 הסבר מילולי</div>
+      <ol>
+        <li>הבקשה מגיעה ל-Controller. ראשית, הוא מחשב hash (טביעת אצבע) של כל הנתונים שהגיעו. אם אותם נתונים בדיוק נשלחו לאחרונה, הוא מחזיר את התשובה מהזיכרון ומדלג על כל החישוב.</li>
+        <li>לכל ארגז ברשימה — הוא בודק אם ארגז עם אותו שם כבר קיים במסד הנתונים. אם כן, מעדכן את נתוניו. אם לא, יוצר רשומה חדשה.</li>
+        <li>בדומה לכך, שומר את הגדרת המכולה במסד.</li>
+        <li>יוצר "מיכל" (Container) שמשייך את תבנית המכולה לריצה הספציפית הזו, עם קוד ייחודי הכולל חותמת זמן.</li>
+        <li>יוצר רשומת "עבודה" (PackingJob) שמקשרת בין המיכל, המנהל המחובר, וסטטוס ראשוני של "ממתין".</li>
+        <li>לכל ארגז עם הכמות שלו — מוסיף שורה לטבלת PackingJobBox שמגדירה כמה מכל ארגז יש לשבץ.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- שלב 4 -->
+  <div class="step orange">
+    <div class="step-header">
+      <div class="step-num">4</div>
+      <div class="step-title">PackingService — תזמור האלגוריתם</div>
+    </div>
+    <span class="file-badge">server/OptiLoad.Core/Application/Services/PackingService.cs</span>
+    <div class="io-grid">
+      <div class="io-box input">
+        <div class="label">📥 קלט</div>
+        <ul>
+          <li><code>jobId</code></li>
+          <li><code>timeLimitSeconds</code> (מגבלת זמן)</li>
+        </ul>
+      </div>
+      <div class="io-box output">
+        <div class="label">📤 פלט</div>
+        <ul>
+          <li><code>PackingResult</code> — תוצאת השיבוץ</li>
+        </ul>
+      </div>
+    </div>
+    <p class="desc">
+      שולף מ-DB את מידות המכולה ורשימת מופעי הארגזים,
+      יוצר <code>BranchAndBoundSolver</code> עם מגבלת הזמן,
+      ומריץ אותו ב-<code>Task.Run</code> (thread נפרד) כדי לא לחסום את השרת.
+      בסוף שומר את התוצאות ב-DB.
+    </p>
+    <div class="verbal">
+      <div class="verbal-title">📖 הסבר מילולי</div>
+      <ol>
+        <li>שירות זה הוא המנהל של תהליך השיבוץ. הוא מקבל את מזהה העבודה ואת מגבלת הזמן.</li>
+        <li>שולף מה-DB את המידות המדויקות של המכולה ואת רשימת כל הארגזים שצריך לשבץ, כשכל ארגז "מוכפל" לפי הכמות שלו (לדוגמה: 5 עותקים של SMALL-A).</li>
+        <li>יוצר מופע של האלגוריתם הראשי ומגדיר לו את מגבלת הזמן.</li>
+        <li>מריץ את האלגוריתם בthread נפרד — כך השרת יכול לקבל בקשות אחרות במקביל.</li>
+        <li>ברגע שהאלגוריתם מסיים (בין אם מצא פתרון אופטימלי, בין אם נגמר הזמן), מעדכן את הסטטוס ב-DB ושומר את כל מיקומי הארגזים.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- שלב 5 -->
+  <div class="step purple">
+    <div class="step-header">
+      <div class="step-num">5</div>
+      <div class="step-title">HeuristicH1 — פתרון התחלתי מהיר</div>
+    </div>
+    <span class="file-badge">server/OptiLoad.Core/Application/Algorithms/HeuristicH1.cs</span>
+    <div class="io-grid">
+      <div class="io-box input">
+        <div class="label">📥 קלט</div>
+        <ul>
+          <li>רשימת BoxInstance (ארגזים)</li>
+          <li>מידות המכולה</li>
+        </ul>
+      </div>
+      <div class="io-box output">
+        <div class="label">📤 פלט</div>
+        <ul>
+          <li>מספר מכולות ראשוני</li>
+          <li>רשימת מיקומים לכל ארגז</li>
+        </ul>
+      </div>
+    </div>
+    <p class="desc">
+      אלגוריתם Shelf — מחלק ארגזים לפרוסות (slices) לפי עומק,
+      כל פרוסה מחולקת למדפים (shelves) לפי גובה.
+      רץ מהיר מאוד ומספק <strong>upper bound</strong> — ה-B&B יודע שצריך
+      לנסות לשפר מהמספר הזה.
+    </p>
+    <div class="verbal">
+      <div class="verbal-title">📖 הסבר מילולי</div>
+      <ol>
+        <li>לפני שמריצים את החיפוש הכבד, צריך נקודת פתיחה טובה. HeuristicH1 נועד לספק פתרון ראשוני מהיר.</li>
+        <li>הוא ממיין את הארגזים מהגדול לקטן לפי עומקם.</li>
+        <li>יוצר "פרוסה" ראשונה עם עומק כמו הארגז הגדול ביותר. מנסה למלא את הפרוסה במדפים — ארגז ראשון קובע את גובה המדף, ארגזים נוספים נכנסים לצדו עד שאוזל המקום.</li>
+        <li>ארגזים שלא נכנסו לפרוסה הנוכחית ממתינים לפרוסה הבאה.</li>
+        <li>בסוף, דוחס את כל הפרוסות לתוך מכולות כך שמספר המכולות יהיה מינימלי.</li>
+        <li>התוצאה — מספר מכולות ומיקומי ארגזים — משמשת כ-upper bound: ה-B&B לא ישאף לפתרון גרוע מזה, רק לפתרון טוב יותר.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- שלב 6 -->
+  <div class="step blue">
+    <div class="step-header">
+      <div class="step-num">6</div>
+      <div class="step-title">BranchMain — חיפוש B&B</div>
+    </div>
+    <span class="file-badge">server/OptiLoad.Core/Application/Algorithms/BranchAndBoundSolver.cs</span>
+    <div class="io-grid">
+      <div class="io-box input">
+        <div class="label">📥 קלט</div>
+        <ul>
+          <li>רשימת ארגזים ממוינת לפי נפח</li>
+          <li>מכולות פתוחות</li>
+          <li>גבול תחתון (lowerBound)</li>
+        </ul>
+      </div>
+      <div class="io-box output">
+        <div class="label">📤 פלט</div>
+        <ul>
+          <li><code>_bestPlacements</code> — מיקומי הארגזים הטובים</li>
+          <li><code>_bestBins</code> — מספר מכולות מינימלי שנמצא</li>
+        </ul>
+      </div>
+    </div>
+    <p class="desc">
+      רקורסיה עמוקה — כל קריאה = צומת בעץ ההחלטות.
+      בכל צומת: "לאיזה מכולה אשים את הארגז הבא?"
+      <br>כולל: גיזום סימטריות (ארגזים זהים, מכולות ריקות),
+      חסם תחתון לגיזום ענפים, backtrack להחזרת המצב.
+      אם נגמר הזמן — עובר לחמדני על מה שנשאר.
+    </p>
+    <div class="verbal">
+      <div class="verbal-title">📖 הסבר מילולי</div>
+      <ol>
+        <li>האלגוריתם לוקח את הארגז הבא ברשימה ושואל: לאיזו מכולה אכניס אותו?</li>
+        <li>הוא מנסה כל מכולה פתוחה בתורה — בוחן האם הארגז נכנס פיזית (לא חורג ממידות, לא מתנגש, עומד יציב, לא מונח על שביר).</li>
+        <li>אם ניתן להכניס — מכניס, ממשיך לארגז הבא (קריאה רקורסיבית), ואחר כך מוציא חזרה כדי לנסות אפשרויות אחרות.</li>
+        <li>לפני כניסה לכל ענף, בודק: "גם אם אניח את כל הארגזים הנותרים בצורה המושלמת, האם נגיע לפחות מכולות ממה שיש לנו כבר?" — אם לא, מגזם את הענף.</li>
+        <li>גם מדלג על מצבים סימטריים: שני ארגזים זהים שנמצאים בסדר הפוך זה לזה יתנו תוצאה זהה, אז בודק רק אחד מהם.</li>
+        <li>אם פג הזמן — לוקח את הפתרון הטוב ביותר שנמצא עד כה ומריץ עליו חמדני כדי לשבץ את הארגזים שנותרו.</li>
+        <li>תהליך זה חוזר על עצמו פעמיים: פעם ראשונה לארגזים רגילים, פעם שנייה לארגזים שבירים (שחייבים להיות למעלה).</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- שלב 7 -->
+  <div class="step orange">
+    <div class="step-header">
+      <div class="step-num">7</div>
+      <div class="step-title">Filler + Repack — השלמה ואופטימיזציה</div>
+    </div>
+    <span class="file-badge">server/OptiLoad.Core/Application/Algorithms/BranchAndBoundSolver.cs</span>
+    <span class="file-badge">server/OptiLoad.Core/Application/Algorithms/CornerPointsFinder.cs</span>
+    <div class="io-grid">
+      <div class="io-box input">
+        <div class="label">📥 קלט</div>
+        <ul>
+          <li>ארגזים שלא שובצו ע"י B&B</li>
+          <li>מכולות פתוחות עם הארגזים הקיימים</li>
+        </ul>
+      </div>
+      <div class="io-box output">
+        <div class="label">📤 פלט</div>
+        <ul>
+          <li>כמה שיותר ארגזים ממוקמים</li>
+          <li>כמה שפחות מכולות בשימוש</li>
+        </ul>
+      </div>
+    </div>
+    <p class="desc">
+      <strong>Filler:</strong> לכל ארגז שנשאר — מנסה כל נקודת פינה פנויה
+      בכל מכולה קיימת (CornerPointsFinder).
+      <br>
+      <strong>Repack:</strong> מנסה להעביר ארגזים מהמכולה האחרונה למכולות
+      קדומות כדי לרוקן מכולה שלמה.
+      שני השלבים פועלים רק אם נשאר זמן בתקציב.
+    </p>
+    <div class="verbal">
+      <div class="verbal-title">📖 הסבר מילולי</div>
+      <ol>
+        <li><strong>Filler:</strong> אחרי ה-B&B, ייתכן שיש ארגזים שלא שובצו. הפונקציה מחפשת עבורם מקום בכל המכולות הקיימות. עבור כל מכולה, היא מחשבת את נקודות הפינה הפנויות — המקומות הטבעיים ביותר להניח ארגז נוסף בלי לבזבז מקום. מנסה לשבץ כל ארגז בכל נקודת פינה בכל סיבוב אפשרי.</li>
+        <li><strong>Repack:</strong> לאחר המילוי, מנסה לשפר עוד. בודק האם ניתן לרוקן את המכולה האחרונה לגמרי על ידי העברת ארגזיה למכולות קדומות. אם מכולה מתרוקנת — חסכנו מכולה שלמה.</li>
+        <li>שני השלבים חוזרים עד שאי אפשר לשפר יותר או עד שנגמר תקציב הזמן.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- שלב 8 -->
+  <div class="step green">
+    <div class="step-header">
+      <div class="step-num">8</div>
+      <div class="step-title">GravitySettler — הצמדה לרצפה</div>
+    </div>
+    <span class="file-badge">server/OptiLoad.Core/Application/Algorithms/GravitySettler.cs</span>
+    <div class="io-grid">
+      <div class="io-box input">
+        <div class="label">📥 קלט</div>
+        <ul>
+          <li>רשימת ארגזים ממוקמים עם מיקומים</li>
+        </ul>
+      </div>
+      <div class="io-box output">
+        <div class="label">📤 פלט</div>
+        <ul>
+          <li>אותם ארגזים עם מיקומים מתוקנים</li>
+        </ul>
+      </div>
+    </div>
+    <p class="desc">
+      מוריד כל ארגז כלפי מטה (Y-) עד שנוגע ברצפה או בארגז מתחתיו.
+      גם מהדק בX ובZ. מבטיח שאין "ארגזים מרחפים" בתצוגה.
+    </p>
+    <div class="verbal">
+      <div class="verbal-title">📖 הסבר מילולי</div>
+      <ol>
+        <li>לאחר כל האלגוריתמים, ייתכן שארגזים מרחפים באוויר — הונחו במיקום תקין מבחינה לוגית אבל לא בצמידות לרצפה או לארגז מתחתם.</li>
+        <li>GravitySettler מדמה כבידה: עבור כל ארגז, מחפש מה הגובה הנמוך ביותר שהוא יכול לרדת אליו — רצפת המכולה (Y=0) או גג הארגז הגבוה ביותר שמתחתיו.</li>
+        <li>מבצע גם הידוק לכיוון X ו-Z כדי שהארגזים ייצמדו זה לזה.</li>
+        <li>חוזר על כך בכמה סיבובים עד שהמצב מתייצב ואין יותר ארגזים שיכולים לרדת.</li>
+        <li>התוצאה: תצוגה ריאליסטית שמדמה איך הארגזים יראו בפועל בתוך המכולה.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- שלב 9 -->
+  <div class="step blue">
+    <div class="step-header">
+      <div class="step-num">9</div>
+      <div class="step-title">LoadingSequencer — סדר טעינה</div>
+    </div>
+    <span class="file-badge">server/OptiLoad.Core/Application/Algorithms/LoadingSequencer.cs</span>
+    <div class="io-grid">
+      <div class="io-box input">
+        <div class="label">📥 קלט</div>
+        <ul>
+          <li>רשימת ארגזים ממוקמים</li>
+          <li>כיוון הטעינה (Front/Back/Left/Right)</li>
+        </ul>
+      </div>
+      <div class="io-box output">
+        <div class="label">📤 פלט</div>
+        <ul>
+          <li>כל ארגז עם מספר <code>loadingStep</code></li>
+        </ul>
+      </div>
+    </div>
+    <p class="desc">
+      ממיין ארגזים לפי תלויות — ארגז שחוסם אחר חייב להיטען אחריו.
+      בונה גרף תלויות (DAG) ומריץ Topological Sort.
+      התוצאה: מספר סדרתי לכל ארגז שמשמש לאנימציה "שלב-בשלב".
+    </p>
+    <div class="verbal">
+      <div class="verbal-title">📖 הסבר מילולי</div>
+      <ol>
+        <li>כאשר טוענים מכולה בפועל, חשוב לדעת באיזה סדר מכניסים את הארגזים. ארגז שנמצא בחלק הפנימי חייב להיכנס לפני ארגז שחוסם אותו מבחוץ.</li>
+        <li>עבור כל זוג ארגזים, הפונקציה בודקת האם אחד חוסם את השני לפי כיוון הטעינה שנבחר (מקדימה, מאחורה, מצד).</li>
+        <li>בונה רשימת תלויות: "ארגז A חייב להיכנס לפני ארגז B".</li>
+        <li>ממיין את הרשימה (Topological Sort) כך שארגזים ללא תלויות מקבלים מספר נמוך, וארגזים שתלויים בהם מקבלים מספר גבוה יותר.</li>
+        <li>כל ארגז מקבל מספר loadingStep — מספר זה מוצג בממשק שלב-בשלב.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- שלב 10 -->
+  <div class="step green">
+    <div class="step-header">
+      <div class="step-num">10</div>
+      <div class="step-title">Three.js — ציור 3D בדפדפן</div>
+    </div>
+    <span class="file-badge">client/pages/01_main-packing-interface.html</span>
+    <div class="io-grid">
+      <div class="io-box input">
+        <div class="label">📥 קלט</div>
+        <ul>
+          <li>JSON עם מיקומי כל הארגזים</li>
+          <li>מידות המכולה</li>
+          <li><code>loadingStep</code> לכל ארגז</li>
+        </ul>
+      </div>
+      <div class="io-box output">
+        <div class="label">📤 פלט</div>
+        <ul>
+          <li>קנבס WebGL עם תצוגה 3D</li>
+          <li>אינטראקציה: סיבוב, זום, לגנדה</li>
+        </ul>
+      </div>
+    </div>
+    <p class="desc">
+      <code>renderResult(data)</code> מצייר מסגרת מכולה ולכל ארגז יוצר
+      <code>BoxGeometry</code> עם <code>MeshStandardMaterial</code>.
+      צבע לפי: שבירות (אדום), סוג ארגז (צבעים שונים).
+      <code>OrbitControls</code> מאפשר סיבוב חופשי של הסצנה.
+    </p>
+    <div class="verbal">
+      <div class="verbal-title">📖 הסבר מילולי</div>
+      <ol>
+        <li>הדפדפן מקבל את ה-JSON עם כל הנתונים. הפונקציה renderResult מנקה את הסצנה הקודמת ומתחילה מחדש.</li>
+        <li>מצייר מסגרת תלת-ממדית (wireframe) שמייצגת את המכולה עם המידות המדויקות.</li>
+        <li>עבור כל ארגז בתוצאה — יוצר קוביה תלת-ממדית בגודל המדויק של הארגז, ממקם אותה בקואורדינטות שחישב האלגוריתם.</li>
+        <li>צובע כל ארגז: ארגז שביר מקבל צבע אדום עם סימן מיוחד. שאר הארגזים מקבלים צבעים לפי סוגם כדי שניתן יהיה להבחין ביניהם.</li>
+        <li>מגדיר תאורה וצלליות כדי שהתצוגה תיראה ריאליסטית ותלת-ממדית.</li>
+        <li>OrbitControls מאפשר למשתמש לגרור עם העכבר כדי לסובב את התצוגה, לזום פנימה וחוצה, ולהסתכל מכל זווית.</li>
+        <li>בצד מוצגת לגנדה עם מספר מכולות, ניצול נפח, ומספר ארגזים ממוקמים.</li>
+      </ol>
+    </div>
+  </div>
+
+</div>
+
+<br><br>
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+</script>
+</body>
+</html>

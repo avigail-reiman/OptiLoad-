@@ -25,7 +25,11 @@ builder.Services.AddCors(options =>
                 "http://localhost:5098",
                 "http://127.0.0.1:5098",
                 "http://localhost:5500",
-                "http://127.0.0.1:5500")
+                "http://127.0.0.1:5500",
+                "https://localhost:7167",
+                "https://127.0.0.1:7167",
+                "https://localhost:5500",
+                "https://127.0.0.1:5500")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .WithExposedHeaders("X-User-Token")

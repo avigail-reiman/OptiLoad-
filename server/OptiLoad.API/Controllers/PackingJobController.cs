@@ -79,6 +79,7 @@ namespace OptiLoad.API.Controllers
             return NoContent();
         }
 
+        // ⚠️ DEAD CODE — endpoint זה (POST /api/packing/demo) לא נקרא מאף דף client
                         [HttpPost("demo")]
         public ActionResult<PackingResult> RunDemo()
         {
@@ -131,6 +132,7 @@ namespace OptiLoad.API.Controllers
             var result  = service.RunPackingJobInMemory(container, instances);
             return Ok(result);
         }
+        // ⚠️ END DEAD CODE
     }
 
     public class CreateJobRequest

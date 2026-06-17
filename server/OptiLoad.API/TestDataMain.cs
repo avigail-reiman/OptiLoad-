@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿// ⚠️ DEAD CODE — קובץ זה לא נקרא לעולם. נקודת הכניסה של הפרויקט היא Program.cs
+using System.Threading.Tasks;
 using OptiLoad.Core.Services;
 
 class TestDataMain

@@ -15,7 +15,7 @@ namespace OptiLoad.Core.Algorithms
         private readonly ContainerDimensions _container; //מידות המכולה שבה יש לארוז את הארגזים
         private readonly Stopwatch _stopwatch = new(); //שעון עצר למדידת זמן הריצה של האלגוריתם
 
-        private int  _globalNodeCount;//מונה גלובלי לספירת הצמתים שנבדקו עד כה
+        private int  _globalNodeCount;
         private int  _bestBins;//מספר המכולות הטוב ביותר שנמצא עד כה
         private bool _isOptimal;//דגל שמציין האם הפתרון הטוב ביותר שנמצא הוא אופטימלי או לא
         private bool _greedyFallbackUsed;//דגל שמציין האם נעשה שימוש בפתרון חמדני
@@ -52,7 +52,7 @@ public PackingResult Solve(IEnumerable<BoxInstance> instances)
 
 {
                 var h1PlacedIds = h1Phase1.placements//מכניס את מזהי הארגזים שכבר שובצו על ידי הפותר החמדני לרשימה כדי לבדוק אילו ארגזים לא שובצו
-                    .Select(p => p.instance.InstanceId)//
+                    .Select(p => p.instance.InstanceId)
                     .ToHashSet();
                 var h1Unplaced = nonFragile//מכניס לרשימה את הארגזים הלא שבירים שלא שובצו על ידי הפותר החמדני על ידי סינון כל הארגזים הלא שבירים לפי אלו שכבר שובצו
                     .Where(b => !h1PlacedIds.Contains(b.InstanceId))
@@ -66,10 +66,9 @@ public PackingResult Solve(IEnumerable<BoxInstance> instances)
                 }
             }
 
-_globalNodeCount = 0;
+            _globalNodeCount = 0;
             var sortedNonFragile = nonFragile
                 .OrderByDescending(b => b.BoxDefinition.Volume).ToList();
-
             var phase1Assignment = new List<(BoxInstance instance, int bin)>();
             var phase1OpenBins   = new List<PackingState>();
 
@@ -79,9 +78,9 @@ _globalNodeCount = 0;
                            phase1OpenBins, lowerBound, fragilePhase: false);
             }
 
-var bestPhase1Bins = RebuildBinsFromPlacements(_bestPlacements);
+            var bestPhase1Bins = RebuildBinsFromPlacements(_bestPlacements);
 
-int lbFragile = 0;
+            int lbFragile = 0;
             if (fragile.Count > 0)
             {
                 lbFragile = LowerBoundCalculator
@@ -92,13 +91,13 @@ int lbFragile = 0;
 
                 var phase2Assignment = new List<(BoxInstance instance, int bin)>();
 
-var phase2OpenBins = bestPhase1Bins;
+                var phase2OpenBins = bestPhase1Bins;
 
 {
                     var h1Fragile       = new HeuristicH1(_container);
                     var h1FragileResult = h1Fragile.Solve(sortedFragile);
 
-var h1FragilePlacedIds = h1FragileResult.placements
+                    var h1FragilePlacedIds = h1FragileResult.placements
                         .Select(p => p.instance.InstanceId).ToHashSet();
                     var h1FragileUnplaced = sortedFragile
                         .Where(b => !h1FragilePlacedIds.Contains(b.InstanceId)).ToList();
@@ -114,12 +113,12 @@ var h1FragilePlacedIds = h1FragileResult.placements
                         fragileH1Placements = ExtractPlacements(h1FragileBins);
                     }
 
-int binOffset = phase2OpenBins.Count;
+                    int binOffset = phase2OpenBins.Count;
                     var offsetFragileH1 = fragileH1Placements
                         .Select(p => (p.Item1, p.Item2 + binOffset, p.Item3, p.Item4))
                         .ToList();
 
-var initialSolution = _bestPlacements.Concat(offsetFragileH1).ToList();
+                    var initialSolution = _bestPlacements.Concat(offsetFragileH1).ToList();
                     _bestPlacements = initialSolution;
                     _bestBins = _bestPlacements.Count > 0
                         ? _bestPlacements.Select(p => p.bin).Max() + 1
@@ -136,7 +135,7 @@ var initialSolution = _bestPlacements.Concat(offsetFragileH1).ToList();
                                binOffset: bestPhase1Bins.Count);
                 }
 
-bool allFragilePlaced = fragile.All(f =>
+                bool allFragilePlaced = fragile.All(f =>
                     _bestPlacements.Any(p => p.instance.InstanceId == f.InstanceId));
 
                 if (allFragilePlaced)
@@ -147,13 +146,13 @@ bool allFragilePlaced = fragile.All(f =>
                 else
                 {
 
-_bestBins = _bestPlacements.Count > 0
+                    _bestBins = _bestPlacements.Count > 0
                         ? _bestPlacements.Select(p => p.bin).Max() + 1
                         : 0;
                 }
             }
 
-var bins = RebuildBinsFromPlacements(_bestPlacements);
+            var bins = RebuildBinsFromPlacements(_bestPlacements);
             var unplaced = allBoxes.Where(b => !_bestPlacements.Any(p => p.instance.InstanceId == b.InstanceId)).ToList();
             bool added;
             do
@@ -193,84 +192,74 @@ var bins = RebuildBinsFromPlacements(_bestPlacements);
             _isOptimal = (_bestBins == overallLowerBound);
 
 var binsForRepack = RebuildBinsFromPlacements(_bestPlacements);
-            bool moved;
-            do
+            // repack רץ רק אם לוקח פחות ממגבלת הזמן + 10% (מינימום 2 שניות בונוס)
+            double repackBudget = TimeLimitSeconds + Math.Max(2.0, TimeLimitSeconds * 0.1);
+            if (_stopwatch.Elapsed.TotalSeconds < repackBudget)
             {
-                moved = false;
-                
-                for (int fromBin = 1; fromBin < binsForRepack.Count; fromBin++)
+                bool moved;
+                do
                 {
-                    var boxesToTry = binsForRepack[fromBin].PlacedBoxes.ToList();
-                    foreach (PlacedBox box in boxesToTry)
+                    moved = false;
+                    if (_stopwatch.Elapsed.TotalSeconds > repackBudget) break;
+                    for (int fromBin = 1; fromBin < binsForRepack.Count; fromBin++)
                     {
-                        
-                        for (int toBin = 0; toBin < fromBin; toBin++)
+                        var boxesToTry = binsForRepack[fromBin].PlacedBoxes.ToList();
+                        foreach (PlacedBox box in boxesToTry)
                         {
-                            var toBinState = binsForRepack[toBin];
-                            var corners = CornerPointsFinder.Find3DCorners(toBinState.PlacedBoxes.ToList(), _container, new[] { box.Instance });
-                            bool placed = false;
-                            foreach (var corner in corners)
+                            for (int toBin = 0; toBin < fromBin; toBin++)
                             {
-                                foreach (var rot in box.Instance.BoxDefinition.GetAllowedRotations())
+                                var toBinState = binsForRepack[toBin];
+                                var corners = CornerPointsFinder.Find3DCorners(toBinState.PlacedBoxes.ToList(), _container, new[] { box.Instance });
+                                bool placed = false;
+                                foreach (var corner in corners)
                                 {
-                                    var filler = CreateFiller();
-                                    if (filler.TryPlaceBox(toBinState, box.Instance, corner, rot, false, out var placedBox))
+                                    foreach (var rot in box.Instance.BoxDefinition.GetAllowedRotations())
                                     {
-                                        toBinState.AddBox(placedBox);
-                                        ((List<PlacedBox>)binsForRepack[fromBin].PlacedBoxes).Remove(box);
-                                        moved = true;
-                                        placed = true;
-                                        break;
+                                        var filler = CreateFiller();
+                                        if (filler.TryPlaceBox(toBinState, box.Instance, corner, rot, false, out var placedBox))
+                                        {
+                                            toBinState.AddBox(placedBox);
+                                            ((List<PlacedBox>)binsForRepack[fromBin].PlacedBoxes).Remove(box);
+                                            moved = true;
+                                            placed = true;
+                                            break;
+                                        }
                                     }
+                                    if (placed) break;
                                 }
                                 if (placed) break;
                             }
-                            if (placed) break;
                         }
                     }
-                }
-            } while (moved);
+                } while (moved);
+            }
 
 var repackedPlacements = ExtractPlacements(binsForRepack);
             var repackedPlacedIds = repackedPlacements.Select(p => p.Item1.InstanceId).ToHashSet();
             var bruteUnplaced = allBoxes.Where(b => !repackedPlacedIds.Contains(b.InstanceId)).ToList();
 
-double step = 0.1;
             foreach (var bin in binsForRepack.Select((b, idx) => (b, idx)))
             {
                 var toPlace = bruteUnplaced.ToList();
                 foreach (var box in toPlace)
                 {
                     bool placed = false;
-                    foreach (var rot in box.BoxDefinition.GetAllowedRotations())
+                    var corners = CornerPointsFinder.Find3DCorners(bin.b.PlacedBoxes.ToList(), _container, new[] { box });
+                    foreach (var corner in corners)
                     {
-                        for (double x = 0; x + rot.W <= _container.Width + 1e-6; x += step)
+                        foreach (var rot in box.BoxDefinition.GetAllowedRotations())
                         {
-                            for (double y = 0; y + rot.H <= _container.Height + 1e-6; y += step)
+                            var filler = CreateFiller();
+                            if (filler.TryPlaceBox(bin.b, box, corner, rot, false, out var placedBox))
                             {
-                                for (double z = 0; z + rot.D <= _container.Depth + 1e-6; z += step)
-                                {
-                                    var pos = new Position3D(x, y, z);
-                                    var filler = CreateFiller();
-                                    if (filler.TryPlaceBox(bin.b, box, pos, rot, false, out var placedBox))
-                                    {
-                                        bin.b.AddBox(placedBox);
-                                        bruteUnplaced.Remove(box);
-                                        placed = true;
-                                        Console.WriteLine($"[HoleFilling] Box {box.InstanceId} placed in bin {bin.idx} at ({x:F2},{y:F2},{z:F2}) rot={rot}");
-                                        goto NextBox;
-                                    }
-                                    else
-                                    {
-
-}
-                                }
+                                bin.b.AddBox(placedBox);
+                                bruteUnplaced.Remove(box);
+                                placed = true;
+                                break;
                             }
                         }
+                        if (placed) break;
                     }
-                NextBox:
-                    if (!placed)
-                        Console.WriteLine($"[HoleFilling] Box {box.InstanceId} could not be placed in bin {bin.idx}");
                 }
             }
 
@@ -285,58 +274,52 @@ double step = 0.1;
         }
 
 private void BranchMain(
-            List<BoxInstance>                     allBoxes,
+            List<BoxInstance> allBoxes,
             List<(BoxInstance instance, int bin)> currentAssignment,
-            List<PackingState>                    openBins,
-            int                                   lowerBound,
-            bool                                  fragilePhase,
-            int                                   binOffset = 0)
+            List<PackingState> openBins,
+            int lowerBound,
+            bool fragilePhase,
+            int binOffset = 0)
         {
             _globalNodeCount++;
-
-if (_globalNodeCount > MaxGlobalNodes) return;
-
-if (_bestBins <= lowerBound) return;
-
-if (_stopwatch.Elapsed.TotalSeconds > TimeLimitSeconds)
+            if (_globalNodeCount > MaxGlobalNodes) return;
+            if (_bestBins <= lowerBound) return;
+            if (_stopwatch.Elapsed.TotalSeconds > TimeLimitSeconds)
             {
                 if (!_greedyFallbackUsed)
                 {
                     _greedyFallbackUsed = true;
-
-var bestBins = RebuildBinsFromPlacements(_bestPlacements);
-
-var bestPlacedIds = _bestPlacements
+                    var bestBins = RebuildBinsFromPlacements(_bestPlacements);
+                    var bestPlacedIds = _bestPlacements
                         .Select(p => p.instance.InstanceId)
                         .ToHashSet();
                     var unassigned = allBoxes
                         .Where(b => !bestPlacedIds.Contains(b.InstanceId))
                         .ToList();
-
                     _greedyUnplaced = GreedySolver.FillRemaining(
                         unassigned,
                         bestBins,
                         _container,
                         MaxFillHeightRatio);
 
-_bestBins       = bestBins.Count;
+                    _bestBins = bestBins.Count;
                     _bestPlacements = ExtractPlacements(bestBins);
                 }
                 return;
             }
-
-if (currentAssignment.Count == allBoxes.Count)
+            //כאשר העץ מלא - תוצאה סופית
+            if (currentAssignment.Count == allBoxes.Count)
             {
                 int usedBins = openBins.Count;
                 if (usedBins < _bestBins)
                 {
-                    _bestBins       = usedBins;
+                    _bestBins = usedBins;
                     _bestPlacements = ExtractPlacements(openBins);
                 }
                 return;
             }
 
-var remainingBoxes = allBoxes.Skip(currentAssignment.Count).ToList();
+            var remainingBoxes = allBoxes.Skip(currentAssignment.Count).ToList();
             double? currentLayerY = null;
             double? currentLayerHeight = null;
             if (remainingBoxes.Count > 0)
@@ -349,19 +332,18 @@ var remainingBoxes = allBoxes.Skip(currentAssignment.Count).ToList();
 
             var nextBox = allBoxes[currentAssignment.Count];
 
-var remaining = allBoxes.Skip(currentAssignment.Count).ToList();
+            var remaining = allBoxes.Skip(currentAssignment.Count).ToList();
 
-double freeCapacityInOpenBins = openBins.Sum(b => _container.Volume - b.UsedVolume);
+            double freeCapacityInOpenBins = openBins.Sum(b => _container.Volume - b.UsedVolume);
             double remainingVol = remaining.Sum(b => b.BoxDefinition.Volume);
             int lb = Math.Max(0,
-                (int)Math.Ceiling(Math.Max(0.0, remainingVol - freeCapacityInOpenBins)
-                                  / _container.Volume));
+                (int)Math.Ceiling(Math.Max(0.0, remainingVol - freeCapacityInOpenBins) / _container.Volume));
 
             int newBinsUsed = openBins.Count - binOffset;  
             int bestNewBins = _bestBins - binOffset;         
             if (newBinsUsed + lb >= bestNewBins) return;
-
-int minBinIdx = 0;
+            //בודק סימטריות על ארגז קודם זהה
+            int minBinIdx = 0;
             if (currentAssignment.Count > 0)
             {
                 var prev = currentAssignment[^1];
@@ -374,6 +356,7 @@ int minBinIdx = 0;
             int tryCount = 0;
             for (int binIdx = minBinIdx; binIdx < openBins.Count; binIdx++)
             {
+                //בודק סימטריות על מכולות זהות - ריקות
                 bool isEmpty = openBins[binIdx].UsedVolume < 1e-9;
                 if (isEmpty)
                 {
@@ -381,7 +364,7 @@ int minBinIdx = 0;
                     triedEmptyBin = true;
                 }
 
-if (TryAssignToBin_Exhaustive(nextBox, binIdx, openBins, fragilePhase, out var placement, currentLayerY, currentLayerHeight))
+                if (TryAssignToBin_Exhaustive(nextBox, binIdx, openBins, fragilePhase, out var placement, currentLayerY, currentLayerHeight))
                 {
                     placedInExisting = true;
                     currentAssignment.Add((nextBox, binIdx));
@@ -392,9 +375,9 @@ if (TryAssignToBin_Exhaustive(nextBox, binIdx, openBins, fragilePhase, out var p
                 tryCount++;
             }
 
-if (!placedInExisting && openBins.Count - binOffset + 1 < bestNewBins)
+            if (!placedInExisting && openBins.Count - binOffset + 1 < bestNewBins)
             {
-                var initFiller    = CreateFiller();
+                var initFiller = CreateFiller();
                 PlacedBox? initPlacement = null;
                 double initBestX2 = double.MaxValue;
                 double initBestY2 = double.MaxValue;
@@ -433,10 +416,10 @@ if (!placedInExisting && openBins.Count - binOffset + 1 < bestNewBins)
         }
 
 private bool TryAssignToBin_Exhaustive(
-            BoxInstance        box,
-            int                binIdx,
+            BoxInstance box,
+            int binIdx,
             List<PackingState> openBins,
-            bool               fragilePhase,
+            bool fragilePhase,
             out PlacedBox? placement,
             double? currentLayerY = null,
             double? currentLayerHeight = null)
@@ -496,7 +479,7 @@ private static bool SameBoxType(BoxInstance a, BoxInstance b)
                    da.IsFragile     == db.IsFragile &&
                    da.AllowRotation == db.AllowRotation;
         }
-
+        //הפונקציה יוצרת את כמות המכולות הנדרשות לפי המיקומים שנשלחים לה ומכניסה לתוכם את הארגזים לפי המיקומים
         private static List<PackingState> RebuildBinsFromPlacements(
             List<(BoxInstance instance, int bin, Position3D pos, Rotation rot)> placements)
         {
@@ -513,6 +496,7 @@ private static bool SameBoxType(BoxInstance a, BoxInstance b)
             return bins;
         }
 
+        // ⚠️ DEAD CODE — פונקציה זו לא נקראת מאף מקום בקוד
         private static List<(BoxInstance, int, Position3D, Rotation)> MergePlacements(
             List<PackingState> phase1OpenBins,
             List<PackingState> phase2OpenBins,
@@ -524,7 +508,8 @@ private static bool SameBoxType(BoxInstance a, BoxInstance b)
 
             return ExtractPlacements(phase1OpenBins);
         }
-
+        // ⚠️ END DEAD CODE
+//המרה של נתוני הארגזים שנארזו במכולות השונות לרשימה שטוחה
 private static List<(BoxInstance, int, Position3D, Rotation)> ExtractPlacements(
             List<PackingState> openBins)
         {

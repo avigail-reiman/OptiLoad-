@@ -44,6 +44,11 @@ public class VisualizationController : ControllerBase
         if (job == null || placements.Count == 0)
             return Content("<h2>משימה לא נמצאה או ריקה</h2>", "text/html; charset=utf-8");
 
+        var container = await _db.GetContainerTemplateById(job.ContainerId);
+        double cW = container?.Width  ?? 589;
+        double cH = container?.Height ?? 239;
+        double cD = container?.Depth  ?? 235;
+
         var json = JsonSerializer.Serialize(new
         {
             placedBoxes = placements.Select(pr => new
@@ -57,6 +62,9 @@ public class VisualizationController : ControllerBase
                 z2 = pr.PosZ + pr.PlacedDepth,
                 isFragile = pr.IsFragile
             }),
+            containerW        = cW,
+            containerH        = cH,
+            containerD        = cD,
             binsUsed          = job.BinsUsed ?? 0,
             volumeUtilization = job.VolumeUtilization ?? 0.0,
             wastedSpacePercent = (1.0 - (job.VolumeUtilization ?? 0.0)) * 100.0,
@@ -69,7 +77,7 @@ public class VisualizationController : ControllerBase
             source            = "DB"
         });
 
-        return Content(HtmlTemplate.Replace("", json), "text/html; charset=utf-8");
+        return Content(HtmlTemplate.Replace("__PACKING_DATA__", json), "text/html; charset=utf-8");
     }
 
 [HttpGet("run")]
@@ -118,7 +126,8 @@ var result = await _packing.RunPackingJobWithTimeLimit(jobId, 8.0);
 return await ViewJobFromDb(jobId);
     }
 
-[HttpGet("3d")]
+// ⚠️ DEAD CODE — endpoint זה (GET /api/visualization/3d) לא נקרא מאף דף client
+    [HttpGet("3d")]
     [Produces("text/html")]
     public ContentResult View3D()
     {
@@ -190,9 +199,10 @@ var json = JsonSerializer.Serialize(new
             isOptimal         = result.IsOptimal
         });
 
-        var html = HtmlTemplate.Replace("", json);
+        var html = HtmlTemplate.Replace("__PACKING_DATA__", json);
         return Content(html, "text/html; charset=utf-8");
     }
+    // ⚠️ END DEAD CODE
 
 [HttpPost("run")]
     public async Task<ActionResult> RunPacking([FromBody] VisualizationRunRequest request)
@@ -205,15 +215,15 @@ var json = JsonSerializer.Serialize(new
 
         var container = new ContainerDimensions
         {
-            Width       = request.Container.Width,
-            Height      = request.MaxFillHeight.HasValue
+            Width = request.Container.Width,
+            Height = request.MaxFillHeight.HasValue
                               ? Math.Min(request.Container.Height, request.MaxFillHeight.Value)
                               : request.Container.Height,
-            Depth       = request.Container.Depth,
+            Depth = request.Container.Depth,
             MaxWeightKg = request.Container.MaxWeightKg
         };
 
-var boxIdMap = new Dictionary<string, int>(); 
+        var boxIdMap = new Dictionary<string, int>(); 
         foreach (var bc in request.Boxes)
         {
             var box = new Box
@@ -229,13 +239,13 @@ var boxIdMap = new Dictionary<string, int>();
             boxIdMap[box.BoxName] = await _db.UpsertBox(box);
         }
 
-int templateId = await _db.UpsertContainerTemplate(container);
+        int templateId = await _db.UpsertContainerTemplate(container);
 
-int containerId = await _db.CreateContainer(templateId,
+        int containerId = await _db.CreateContainer(templateId,
             $"VIS-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}");
         int jobId = await _db.CreatePackingJob(containerId, GetCurrentAdminId());
 
-var boxQtyByBoxId = new Dictionary<int, int>();
+        var boxQtyByBoxId = new Dictionary<int, int>();
         foreach (var bc in request.Boxes)
         {
             var name = string.IsNullOrWhiteSpace(bc.Name) ? $"Box_{bc.W}x{bc.H}x{bc.D}" : bc.Name;
@@ -248,7 +258,7 @@ var boxQtyByBoxId = new Dictionary<int, int>();
         foreach (var (bid, qty) in boxQtyByBoxId)
             await _db.AddBoxToJob(jobId, bid, qty);
 
-double timeLimit = Math.Clamp(request.TimeLimitSeconds > 0 ? request.TimeLimitSeconds : 10.0, 1.0, 300.0);
+        double timeLimit = Math.Clamp(request.TimeLimitSeconds > 0 ? request.TimeLimitSeconds : 10.0, 1.0, 300.0);
         var result = await _packing.RunPackingJobWithTimeLimit(jobId, timeLimit);
 
         var loadingFace = Enum.TryParse<CoreLoadingFace>(request.LoadingFace, true, out var lf)
@@ -256,32 +266,32 @@ double timeLimit = Math.Clamp(request.TimeLimitSeconds > 0 ? request.TimeLimitSe
 
         var response = new
         {
-            jobId             = jobId,
-            containerW        = container.Width,
-            containerH        = container.Height,
-            containerD        = container.Depth,
-            loadingFace       = loadingFace.ToString(),
+            jobId = jobId,
+            containerW = container.Width,
+            containerH = container.Height,
+            containerD = container.Depth,
+            loadingFace = loadingFace.ToString(),
             placedBoxes = LoadingSequencer.Sequence(result.PlacedBoxes, loadingFace)
                 .Select(t => new
                 {
-                    name         = t.Box.Instance.BoxDefinition.BoxName,
-                    id           = t.Box.Instance.InstanceId,
-                    binIndex     = t.Box.BinIndex,
+                    name = t.Box.Instance.BoxDefinition.BoxName,
+                    id = t.Box.Instance.InstanceId,
+                    binIndex = t.Box.BinIndex,
                     x1 = t.Box.X1, y1 = t.Box.Y1, z1 = t.Box.Z1,
                     x2 = t.Box.X2, y2 = t.Box.Y2, z2 = t.Box.Z2,
-                    isFragile    = t.Box.Instance.BoxDefinition.IsFragile,
+                    isFragile = t.Box.Instance.BoxDefinition.IsFragile,
                     loadingStep  = t.LoadingStep
                 }),
-            unplacedBoxes     = result.UnplacedBoxes
+            unplacedBoxes = result.UnplacedBoxes
                 .GroupBy(b => b.BoxDefinition.BoxName)
                 .Select(g => new { name = g.Key, count = g.Count() })
                 .ToList(),
-            binsUsed          = result.BinsUsed,
+            binsUsed = result.BinsUsed,
             volumeUtilization = result.VolumeUtilization,
             wastedSpacePercent = (1.0 - result.VolumeUtilization) * 100.0,
-            perBinStats       = result.PerBinStats.Select(s => new
+            perBinStats = result.PerBinStats.Select(s => new
             {
-                binIndex          = s.BinIndex,
+                binIndex = s.BinIndex,
                 usedVolumePercent = s.UtilizationPercent,
                 wastedPercent     = s.WastedPercent
             }).ToList(),
@@ -293,7 +303,7 @@ double timeLimit = Math.Clamp(request.TimeLimitSeconds > 0 ? request.TimeLimitSe
         _cache.Set(cacheKey, response, TimeSpan.FromMinutes(30));
         return Ok(response);
     }
-
+//מחשה אחוזי נפח מנוצל ושנפח שלא נוצל לכל מכולה
 private static object BuildPerBinStatsFromPlacements(
         IEnumerable<PlacementResult> placements, int binsUsed, double utilization)
     {
@@ -364,8 +374,8 @@ private const string HtmlTemplate = """
         <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
         <script>
-        const R = ;
-        const CW=589, CH=239, CD=235, GAP=120;
+        const R = __PACKING_DATA__;
+        const CW=R.containerW||589, CH=R.containerH||239, CD=R.containerD||235, GAP=120;
         const PAL=[0x4c9be8,0x56d364,0xe3b341,0xd2a8ff,0x79c0ff,0xffa657,
                    0xf78166,0xadd7f6,0xb8bb26,0x83a598,0xfe8019,0x8ec07c,0xa9b665];
         const nameColor={};let ci=0;

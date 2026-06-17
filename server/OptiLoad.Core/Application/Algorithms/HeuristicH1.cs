@@ -9,39 +9,40 @@ namespace OptiLoad.Core.Algorithms
     public class HeuristicH1
     {
         private readonly ContainerDimensions _container;
-
+        //קונסטרקטור- פונקציה שרצה כשיוצריםם אובייקט ומקבלת מידות מכולה ושומרת אותם ב_container
         public HeuristicH1(ContainerDimensions container)
         {
             _container = container;
         }
-
-public (int binsUsed, List<(BoxInstance instance, int bin, Position3D pos, Rotation rot)> placements)
-            Solve(IEnumerable<BoxInstance> instances)
+        //הפונקציה הראשית - מקבלת רשימת ארגזים ומריצה את האלגוריתם בשלושה כיוונים ומחזירה את התוצאה הטובה ביותר
+        public (int binsUsed, List<(BoxInstance instance, int bin, Position3D pos, Rotation rot)> placements)
+        Solve(IEnumerable<BoxInstance> instances)
         {
             var boxList = instances.ToList();
             if (boxList.Count == 0)
                 return (0, new());
 
-var results = new[]
+            var results = new[]
             {
                 RunWithDimension(boxList, AxisChoice.Depth),
                 RunWithDimension(boxList, AxisChoice.Width),
                 RunWithDimension(boxList, AxisChoice.Height),
             };
 
-return results
+            return results
                 .OrderBy(r => r.binsUsed)
                 .ThenByDescending(r => r.placements.Count)
                 .First();
         }
-
-private enum AxisChoice { Depth, Width, Height }
-
+        //הגדרת שלושה כיוונים לריצה.
+        private enum AxisChoice { Depth, Width, Height }
+        //הפונקציה שמריצה את כל תהליך האריזה לכיוון אחד. מקבלת את הארגזים ואת הכיוון ומחזירה את כמות המכולות
         private (int binsUsed, List<(BoxInstance, int, Position3D, Rotation)> placements)
-            RunWithDimension(List<BoxInstance> boxes, AxisChoice depthAxis)
+        RunWithDimension(List<BoxInstance> boxes, AxisChoice depthAxis)
         {
             
             double W, H, D;
+            //מקבלת ערך שמגדיר את כיוון המכולה ומגדירה אותה לפיו
             switch (depthAxis)
             {
                 case AxisChoice.Depth:  W = _container.Width; H = _container.Height; D = _container.Depth;  break;
@@ -49,8 +50,8 @@ private enum AxisChoice { Depth, Width, Height }
                 case AxisChoice.Height: W = _container.Width; H = _container.Depth;  D = _container.Height; break;
                 default: throw new ArgumentOutOfRangeException();
             }
-
-var withRotations = new List<(BoxInstance inst, double bd, double bw, double bh)>();
+            //יצירת רשימת הארגזים עם הסיבובים האפשריים שלהם
+            var withRotations = new List<(BoxInstance inst, double bd, double bw, double bh)>();
             foreach (var inst in boxes)
             {
                 var box = inst.BoxDefinition;
@@ -65,30 +66,31 @@ var withRotations = new List<(BoxInstance inst, double bd, double bw, double bh)
                                     depthAxis == AxisChoice.Width  ? r.D : r.D;
                         return (bd, bw, bh);
                     })
-                    
+                    //סינון הסיבובים שלא נכנסים במידות המכולה
                     .Where(r => r.bw <= W + 1e-9 && r.bh <= H + 1e-9 && r.bd <= D + 1e-9)
-                    
+                    //ממיין מהעמוק לפחות עמוק
                     .OrderByDescending(r => r.bd)
                     .ToList();
-
+                //אם לא נמצא סיבוב מתאים מדלגים על הארגז
                 if (candidates.Count == 0) continue; 
-
+                //בחירת הסיבוב הראשון - העמוק ביותר
                 var best = candidates.First();
+                //הוספת הארגז עם הסיבוב הטוב ביותר לרשימת הארגזים עם סיבובים
                 withRotations.Add((inst, best.bd, best.bw, best.bh));
             }
+            //ממיין לפי עומק
+            withRotations = withRotations.OrderByDescending(b => b.bd).ToList();
 
-withRotations = withRotations.OrderByDescending(b => b.bd).ToList();
-
-var slices     = new List<Slice>();
-            var remaining  = new Queue<(BoxInstance inst, double bd, double bw, double bh)>(withRotations);
+            var slices = new List<Slice>();
+            var remaining = new Queue<(BoxInstance inst, double bd, double bw, double bh)>(withRotations);
 
             while (remaining.Count > 0)
             {
-                var slice     = new Slice(remaining.Peek().bd, W, H);
+                var slice = new Slice(remaining.Peek().bd, W, H);
                 var toProcess = new List<(BoxInstance inst, double bd, double bw, double bh)>();
 
-double sliceDepth = remaining.Peek().bd;
-                var    temp       = remaining.ToList();
+                double sliceDepth = remaining.Peek().bd;
+                var temp = remaining.ToList();
                 remaining.Clear();
                 foreach (var item in temp)
                 {
@@ -98,7 +100,7 @@ double sliceDepth = remaining.Peek().bd;
                         remaining.Enqueue(item);
                 }
 
-toProcess = toProcess.OrderByDescending(b => b.bh).ToList();
+                toProcess = toProcess.OrderByDescending(b => b.bh).ToList();
 
                 foreach (var item in toProcess)
                 {
@@ -109,44 +111,46 @@ toProcess = toProcess.OrderByDescending(b => b.bh).ToList();
                     }
                 }
 
-if (slice.PlacedItems.Count == 0) break;
+                if (slice.PlacedItems.Count == 0) break;
 
                 slices.Add(slice);
             }
 
-var bins = new List<double>();  
+            var bins = new List<double>();  
             var sliceToBin = new Dictionary<int, int>();
 
             for (int s = 0; s < slices.Count; s++)
             {
                 double sliceD = slices[s].Depth;
-                bool   placed = false;
+                bool placed = false;
 
                 for (int b = 0; b < bins.Count; b++)
                 {
                     if (bins[b] + sliceD <= D + 1e-9)
                     {
+                        //מכניס את הפרוסה למכולה קיימת
                         sliceToBin[s] = b;
-                        bins[b]       += sliceD;
-                        placed        = true;
+                        bins[b] += sliceD;
+                        placed = true;
                         break;
                     }
                 }
 
                 if (!placed)
                 {
+                    //יוצר מכולה חדשה ומכניס את הפרוסה אליה
                     sliceToBin[s] = bins.Count;
                     bins.Add(sliceD);
                 }
             }
 
-var placements = new List<(BoxInstance, int, Position3D, Rotation)>();
+            var placements = new List<(BoxInstance, int, Position3D, Rotation)>();
             var binDepthOffset = new double[bins.Count];
 
             for (int s = 0; s < slices.Count; s++)
             {
-                int    binIndex   = sliceToBin[s];
-                double zOffset    = binDepthOffset[binIndex];
+                int binIndex = sliceToBin[s];
+                double zOffset = binDepthOffset[binIndex];
                 double sliceDepth = slices[s].Depth;
 
                 foreach (var (inst, px, py, bW, bH, bD) in slices[s].PlacedItems)
@@ -183,15 +187,15 @@ var placements = new List<(BoxInstance, int, Position3D, Rotation)>();
 
             return (bins.Count, placements);
         }
-
-private class Slice
+        //מחלקה שמייצגת פרוסה
+        private class Slice
         {
-            public double Depth { get; }
-            public double W     { get; }
-            public double H     { get; }
+            public double Depth { get; }//עומק הפרוסה
+            public double W     { get; }//רוחב הפרוסה
+            public double H     { get; }//גובה הפרוסה
 
-            private readonly List<Shelf>                                              _shelves = new();
-            public           List<(BoxInstance inst, double x, double y, double bW, double bH, double bD)> PlacedItems = new();
+            private readonly List<Shelf> _shelves = new();//רשימת המדפים בתוך הפרוסה
+            public List<(BoxInstance inst, double x, double y, double bW, double bH, double bD)> PlacedItems = new();//רשימת הארגזים שהוכנסו לפרוסה עם המיקום שלהם
 
             public Slice(double depth, double w, double h)
             {
@@ -202,7 +206,7 @@ private class Slice
 
             public bool TryAddBox(BoxInstance inst, double boxW, double boxH, double boxD)
             {
-                
+                //מנסה להכניס ארגז למדף קיים
                 foreach (var shelf in _shelves)
                 {
                     if (shelf.TryAddBox(inst, boxW, boxH, out double px, out double py))
@@ -211,8 +215,8 @@ private class Slice
                         return true;
                     }
                 }
-
-double usedHeight = _shelves.Sum(s => s.Height);
+                //מנסה לפתוח מדף חדש ולהכניס אליו את הארגז
+                double usedHeight = _shelves.Sum(s => s.Height);
                 if (usedHeight + boxH <= H + 1e-9)
                 {
                     var newShelf = new Shelf(usedHeight, boxH, W);
@@ -228,12 +232,13 @@ double usedHeight = _shelves.Sum(s => s.Height);
             }
         }
 
-private class Shelf
+        //מחלקה שמייצגת מדף אחד בתוך פרוסה
+        private class Shelf
         {
-            public double BaseY  { get; }
-            public double Height { get; }
-            public double Width  { get; }
-            private double _usedX = 0;
+            public double BaseY  { get; }//הגובה שממנו מתחיל המדף
+            public double Height { get; }//גובה המדף
+            public double Width  { get; }//רוחב המדף
+            private double _usedX = 0;//כמה רוחב כבר תפוס במדף
 
             public Shelf(double baseY, double height, double width)
             {
@@ -248,7 +253,7 @@ private class Shelf
                 px = 0; py = 0;
                 if (boxH > Height + 1e-9)    return false;
                 if (_usedX + boxW > Width + 1e-9) return false;
-
+                //מיקום הארגז במדף
                 px    = _usedX;
                 py    = BaseY;
                 _usedX += boxW;
