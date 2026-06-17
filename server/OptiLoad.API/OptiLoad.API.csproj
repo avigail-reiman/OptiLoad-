@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OptiLoad.Core\OptiLoad.Core.csproj" />
+    <ProjectReference Include="..\OptiLoad.Application\OptiLoad.Application.csproj" />
     <ProjectReference Include="..\OptiLoad.Data\OptiLoad.Data.csproj" />
   </ItemGroup>
 

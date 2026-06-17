@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using OptiLoad.Core.Models;
 
-namespace OptiLoad.Core.Algorithms
+namespace OptiLoad.Application.Algorithms
 {
 
 //פונקציה שמוצאת את כל נקודות הפינה האפשריות במכולה על סמך מיקום וסיבוב של הקופסאות שכבר שובצו, ומחזירה רשימה של מיקומים תלת-ממדיים

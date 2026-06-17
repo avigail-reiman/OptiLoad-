@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using OptiLoad.Core.Algorithms;
+using OptiLoad.Application.Algorithms;
 using OptiLoad.Core.Models;
 
-namespace OptiLoad.Core.Application.Algorithms;
+namespace OptiLoad.Application.Algorithms;
 
 public enum LoadingFace { Front, Back, Left, Right }
 

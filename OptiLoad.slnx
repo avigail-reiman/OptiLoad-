@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="server/OptiLoad.API/OptiLoad.API.csproj" />
   <Project Path="server/OptiLoad.Core/OptiLoad.Core.csproj" />
+  <Project Path="server/OptiLoad.Application/OptiLoad.Application.csproj" />
   <Project Path="server/OptiLoad.Data/OptiLoad.Data.csproj" />
   <Project Path="server/OptiLoad.Tests/OptiLoad.Tests.csproj" />
 </Solution>

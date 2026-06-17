@@ -1,4 +1,4 @@
-﻿using OptiLoad.Core.Algorithms;
+﻿using OptiLoad.Application.Algorithms;
 using OptiLoad.Core.Models;
 using Xunit;
 

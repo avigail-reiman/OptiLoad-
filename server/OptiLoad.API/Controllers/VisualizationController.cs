@@ -2,15 +2,15 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using OptiLoad.API.DTOs;
-using OptiLoad.Core.Application.Algorithms;
+using OptiLoad.Application.Algorithms;
 using OptiLoad.Core.Models;
-using OptiLoad.Core.Services;
+using OptiLoad.Application.Services;
 using OptiLoad.Data;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using CoreLoadingFace = OptiLoad.Core.Application.Algorithms.LoadingFace;
+using CoreLoadingFace = OptiLoad.Application.Algorithms.LoadingFace;
 
 namespace OptiLoad.API.Controllers;
 

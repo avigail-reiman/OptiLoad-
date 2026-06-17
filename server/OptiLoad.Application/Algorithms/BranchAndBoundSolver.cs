@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using OptiLoad.Core.Models;
 
-namespace OptiLoad.Core.Algorithms
+namespace OptiLoad.Application.Algorithms
 {
     public class BranchAndBoundSolver
     {

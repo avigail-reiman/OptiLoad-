@@ -1,4 +1,4 @@
-namespace OptiLoad.Core.Algorithms
+﻿namespace OptiLoad.Application.Algorithms
 {
     /// <summary>
     /// כל הקבועים המשמשים את אלגוריתמי השיבוץ — מקום אחד מרכזי לשינוי ערכים.

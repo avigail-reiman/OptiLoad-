@@ -1,6 +1,7 @@
 ﻿using OptiLoad.Core.Models;
+using OptiLoad.Core.Services;
 
-namespace OptiLoad.Core.Services
+namespace OptiLoad.Application.Services
 {
     public interface IAdminService
     {

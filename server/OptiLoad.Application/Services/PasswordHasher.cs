@@ -2,7 +2,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace OptiLoad.Core.Services
+namespace OptiLoad.Application.Services
 {
     public static class PasswordHasher
     {

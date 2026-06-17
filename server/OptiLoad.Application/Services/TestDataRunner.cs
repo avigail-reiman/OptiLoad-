@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using OptiLoad.Core.Models;
 
 // ⚠️ DEAD CODE — מחלקה זו נקראת רק מ-TestDataMain שגם הוא קוד מת
-namespace OptiLoad.Core.Services
+namespace OptiLoad.Application.Services
 {
     public class TestDataRunner
     {

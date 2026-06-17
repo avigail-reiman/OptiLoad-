@@ -1,7 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OptiLoad.Core.Models;
 using OptiLoad.Core.Services;
+using OptiLoad.Application.Services;
 using OptiLoad.Data;
 using System.Security.Claims;
 using System.Security.Cryptography;

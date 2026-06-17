@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using OptiLoad.Core.Algorithms;
+using OptiLoad.Application.Algorithms;
 using OptiLoad.Core.Models;
+using OptiLoad.Core.Services;
 
-namespace OptiLoad.Core.Services
+namespace OptiLoad.Application.Services
 {
 
     public class PackingService

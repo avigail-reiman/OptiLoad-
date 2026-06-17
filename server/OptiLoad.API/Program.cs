@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using OptiLoad.Core.Services;
+using OptiLoad.Application.Services;
 using OptiLoad.Data;
 using OptiLoad.API.Services;
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using OptiLoad.Core.Models;
 
-namespace OptiLoad.Core.Algorithms
+namespace OptiLoad.Application.Algorithms
 {
 
     public static class LowerBoundCalculator//חסמים לקיצוץ ענפים
